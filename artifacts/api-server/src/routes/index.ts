@@ -29,6 +29,8 @@ import announcementsRouter from "./announcements";
 import earlyAlertsRouter from "./earlyAlerts";
 import discussionsRouter from "./discussions";
 import transcriptRouter from "./transcript";
+import studentPlanRouter from "./studentPlan";
+import studentNotesRouter from "./studentNotes";
 
 const router: IRouter = Router();
 
@@ -62,5 +64,7 @@ router.use(announcementsRouter);
 router.use(earlyAlertsRouter);
 router.use(discussionsRouter);
 router.use(transcriptRouter);
+router.use(studentPlanRouter);
+router.use(studentNotesRouter);
 
 export default router;

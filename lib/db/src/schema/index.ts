@@ -17,3 +17,4 @@ export * from "./gradebook";
 export * from "./rubrics";
 export * from "./earlyAlerts";
 export * from "./discussions";
+export * from "./studentPlan";

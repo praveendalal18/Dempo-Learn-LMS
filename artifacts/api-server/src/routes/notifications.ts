@@ -6,6 +6,7 @@ import {
   classSessionsTable,
   coursesTable,
   enrollmentsTable,
+  studentTasksTable,
 } from "@workspace/db";
 import {
   ListNotificationsResponse,
@@ -91,10 +92,39 @@ async function ensureClassReminders(
   );
 }
 
+/** Fires in-app notifications for personal tasks whose reminder time has passed. */
+async function ensureTaskReminders(userId: string): Promise<void> {
+  const now = new Date();
+  const due = await db
+    .select()
+    .from(studentTasksTable)
+    .where(
+      and(
+        eq(studentTasksTable.studentId, userId),
+        eq(studentTasksTable.reminded, false),
+        lte(studentTasksTable.remindAt, now),
+      ),
+    );
+  if (due.length === 0) return;
+  await createNotifications(
+    due.map((t) => ({
+      userId,
+      type: "reminder",
+      title: `Reminder: ${t.title}`,
+      body: t.note ?? undefined,
+      link: t.courseId ? `/course/${t.courseId}` : "/my-plan",
+      courseId: t.courseId ?? undefined,
+      refId: t.id,
+    })),
+  );
+  await db.update(studentTasksTable).set({ reminded: true }).where(inArray(studentTasksTable.id, due.map((t) => t.id)));
+}
+
 router.get("/notifications", requireAuth, async (req, res): Promise<void> => {
   const userId = req.userId!;
 
   await ensureClassReminders(userId, req.localUser!.role).catch(() => {});
+  await ensureTaskReminders(userId).catch(() => {});
 
   const rows = await db
     .select()
