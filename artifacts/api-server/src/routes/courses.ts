@@ -697,7 +697,26 @@ router.put(
       res.status(400).json({ error: params.error.message });
       return;
     }
-    const parsed = UpdateCoursePlanBody.safeParse(req.body);
+    // Inline validation (not the generated body) so course duration can be any
+    // whole number of 1-hour sessions — the generated contract forces multiples
+    // of 5, which we intentionally bypass here.
+    const PlanInputInline = z.object({
+      totalHours: z.number().int().min(0).max(200),
+      lockedDays: z.array(z.number().int()).optional(),
+      items: z
+        .array(
+          z.object({
+            hourNumber: z.number().int().positive(),
+            title: z.string().trim().min(1),
+            description: z.string().nullish(),
+            preWork: z.string().nullish(),
+            caseStudy: z.string().nullish(),
+            postWork: z.string().nullish(),
+          }),
+        )
+        .default([]),
+    });
+    const parsed = PlanInputInline.safeParse(req.body);
     if (!parsed.success) {
       res.status(400).json({ error: parsed.error.message });
       return;

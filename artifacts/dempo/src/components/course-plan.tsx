@@ -56,7 +56,8 @@ function formatTime12(hhmm?: string): string {
   return `${h12}:${String(m || 0).padStart(2, "0")}${period}`;
 }
 
-const HOUR_OPTIONS = [5, 10, 15, 20, 25, 30, 35, 40, 45, 50];
+// Duration options in 1-hour steps (each hour is one session).
+const HOUR_OPTIONS = Array.from({ length: 40 }, (_, i) => i + 1);
 
 async function api<T = unknown>(path: string, opts?: RequestInit): Promise<T> {
   const res = await fetch(`/api${path}`, { headers: { "Content-Type": "application/json" }, ...opts });
@@ -550,9 +551,9 @@ function TeacherPlanEditor({ courseId, plan, extras }: { courseId: number; plan:
                 onChange={e => { setTotalHours(parseInt(e.target.value, 10)); setDirty(true); }}
               >
                 <option value={0}>No plan</option>
-                {HOUR_OPTIONS.map(h => <option key={h} value={h}>{isSession ? `${h} sessions` : `${h} hours (${h / hoursPerDay} days)`}</option>)}
+                {HOUR_OPTIONS.map(h => <option key={h} value={h}>{isSession ? `${h} session${h === 1 ? "" : "s"} (${h}h)` : `${h} hours (${h / hoursPerDay} days)`}</option>)}
               </select>
-              <p className="text-xs text-muted-foreground">{isSession ? "Each session is one teaching hour." : `${hoursPerDay} teaching hours per day.`}</p>
+              <p className="text-xs text-muted-foreground">{isSession ? "Each session is one teaching hour — pick how many." : `${hoursPerDay} teaching hours per day.`}</p>
             </div>
             <div className="space-y-2">
               <Label htmlFor="start-time" className="flex items-center gap-1"><Clock className="w-3.5 h-3.5" /> Default start time</Label>
