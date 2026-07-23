@@ -1,0 +1,134 @@
+/* ============================================================
+   aipraveen.com — design tokens (from design handoff)
+   The palette is intentionally light-only (warm off-white).
+   ============================================================ */
+:root {
+  /* Ink / navy */
+  --ink: #12233f;
+  --ink-hover: #1d3459;
+  --ink-deep-1: #0e1b31;
+  --ink-deep-2: #16294a;
+  --ink-deep-3: #0c1930;
+  --navy-border: #2a3c5c;
+
+  /* Accent / bronze */
+  --accent: #8a6d2b;
+  --accent-on-navy: #c9b37e;
+  --accent-tint: #fbf7ee;
+  --accent-border: #ddcfa8;
+
+  /* Surfaces */
+  --bg: #fcfcfa;
+  --card: #ffffff;
+  --strip: #f6f5f1;
+  --muted-fill: #f2f1ec;
+  --skeleton: #edece7;
+
+  /* Lines & secondary text */
+  --border: #e2e4de;
+  --text-secondary: #5a6474;
+  --faint: #b9bfc9;
+  --on-navy-muted: #9aa4b8;
+
+  /* Status */
+  --success: #3c7a3f;
+  --success-border: #bbd4bc;
+  --success-bg: #f0f6f0;
+  --error: #a34b3d;
+  --error-border: #e4c4be;
+  --error-bg: #faf1ef;
+
+  /* Radii */
+  --r-card: 6px;
+  --r-chip: 4px;
+  --r-pill: 20px;
+  --r-phone: 24px;
+
+  /* Shadows */
+  --shadow-panel: 0 8px 28px rgba(18, 35, 63, 0.14);
+  --shadow-phone: 0 12px 40px rgba(18, 35, 63, 0.12);
+  --shadow-pill: 0 4px 14px rgba(18, 35, 63, 0.25);
+
+  /* Content max-widths */
+  --w-wide: 1160px;
+  --w-detail: 1060px;
+  --w-prose: 880px;
+  --w-email: 720px;
+  --w-form: 640px;
+  --w-checkout: 520px;
+  --w-success: 480px;
+  --w-narrow: 420px;
+
+  /* Fonts (wired in app/layout.tsx via next/font) */
+  --font-display: "Archivo", system-ui, sans-serif;
+  --font-body: "Inter", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  color-scheme: light;
+}
+
+body {
+  min-height: 100vh;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: 15px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+a {
+  color: var(--ink);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+a:hover {
+  color: var(--accent);
+}
+
+input,
+textarea,
+select,
+button {
+  font-family: var(--font-body);
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 0.45;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+/* ---------- shared primitives ---------- */
+.display {
+  font-family: var(--font-display);
+}
+.mono {
+  font-family: var(--font-mono);
+  text-transform: uppercase;
+}
+
+/* Links that act as buttons/nav should not be underlined by default */
+a.plain {
+  text-decoration: none;
+}
+
+.container {
+  width: 100%;
+  margin: 0 auto;
+  padding-left: 28px;
+  padding-right: 28px;
+}
