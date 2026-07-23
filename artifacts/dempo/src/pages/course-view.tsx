@@ -186,12 +186,12 @@ export default function CourseViewPage({ id }: { id: string }) {
         )}
       </div>
 
-      <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-        <TabsList className="mb-6 h-12 w-full justify-start rounded-lg bg-transparent border-b p-0 overflow-x-auto flex-nowrap [&>*]:shrink-0">
-          <TabsTrigger value="assignments" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-6 h-full font-medium">
+      <Tabs value={activeTab} onValueChange={handleTabChange} className="flex flex-col md:flex-row gap-5 md:gap-8 items-start w-full">
+        <TabsList className="flex flex-wrap md:flex-col md:w-52 shrink-0 h-auto w-full bg-transparent p-0 gap-1 justify-start md:sticky md:top-4 [&>*]:shrink-0">
+          <TabsTrigger value="assignments" className="w-full justify-start px-3 py-1.5 rounded-md text-sm font-medium text-muted-foreground data-[state=active]:bg-sidebar-accent data-[state=active]:text-sidebar-accent-foreground data-[state=active]:shadow-none hover:bg-muted/60 transition-colors">
             Assignments
           </TabsTrigger>
-          <TabsTrigger value="materials" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-6 h-full font-medium">
+          <TabsTrigger value="materials" className="w-full justify-start px-3 py-1.5 rounded-md text-sm font-medium text-muted-foreground data-[state=active]:bg-sidebar-accent data-[state=active]:text-sidebar-accent-foreground data-[state=active]:shadow-none hover:bg-muted/60 transition-colors">
             <span className="flex items-center gap-2">
               Materials
               {unseenCount > 0 && (
@@ -204,56 +204,57 @@ export default function CourseViewPage({ id }: { id: string }) {
               )}
             </span>
           </TabsTrigger>
-          <TabsTrigger value="announcements" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-6 h-full font-medium">
+          <TabsTrigger value="announcements" className="w-full justify-start px-3 py-1.5 rounded-md text-sm font-medium text-muted-foreground data-[state=active]:bg-sidebar-accent data-[state=active]:text-sidebar-accent-foreground data-[state=active]:shadow-none hover:bg-muted/60 transition-colors">
             Announcements
           </TabsTrigger>
-          <TabsTrigger value="discussion" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-6 h-full font-medium">
+          <TabsTrigger value="discussion" className="w-full justify-start px-3 py-1.5 rounded-md text-sm font-medium text-muted-foreground data-[state=active]:bg-sidebar-accent data-[state=active]:text-sidebar-accent-foreground data-[state=active]:shadow-none hover:bg-muted/60 transition-colors">
             Discussion
           </TabsTrigger>
-          <TabsTrigger value="notes" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-6 h-full font-medium">
+          <TabsTrigger value="notes" className="w-full justify-start px-3 py-1.5 rounded-md text-sm font-medium text-muted-foreground data-[state=active]:bg-sidebar-accent data-[state=active]:text-sidebar-accent-foreground data-[state=active]:shadow-none hover:bg-muted/60 transition-colors">
             Notes
           </TabsTrigger>
-          <TabsTrigger value="plan" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-6 h-full font-medium">
+          <TabsTrigger value="plan" className="w-full justify-start px-3 py-1.5 rounded-md text-sm font-medium text-muted-foreground data-[state=active]:bg-sidebar-accent data-[state=active]:text-sidebar-accent-foreground data-[state=active]:shadow-none hover:bg-muted/60 transition-colors">
             Course Plan
           </TabsTrigger>
-          <TabsTrigger value="schedule" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-6 h-full font-medium">
+          <TabsTrigger value="schedule" className="w-full justify-start px-3 py-1.5 rounded-md text-sm font-medium text-muted-foreground data-[state=active]:bg-sidebar-accent data-[state=active]:text-sidebar-accent-foreground data-[state=active]:shadow-none hover:bg-muted/60 transition-colors">
             Schedule
           </TabsTrigger>
           {!isTeacher && (
-            <TabsTrigger value="progress" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-6 h-full font-medium">
+            <TabsTrigger value="progress" className="w-full justify-start px-3 py-1.5 rounded-md text-sm font-medium text-muted-foreground data-[state=active]:bg-sidebar-accent data-[state=active]:text-sidebar-accent-foreground data-[state=active]:shadow-none hover:bg-muted/60 transition-colors">
               My Progress
             </TabsTrigger>
           )}
-          <TabsTrigger value="leaderboard" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-6 h-full font-medium">
+          <TabsTrigger value="leaderboard" className="w-full justify-start px-3 py-1.5 rounded-md text-sm font-medium text-muted-foreground data-[state=active]:bg-sidebar-accent data-[state=active]:text-sidebar-accent-foreground data-[state=active]:shadow-none hover:bg-muted/60 transition-colors">
             Leaderboard
           </TabsTrigger>
           {isTeacher && (
-            <TabsTrigger value="roster" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-6 h-full font-medium">
+            <TabsTrigger value="roster" className="w-full justify-start px-3 py-1.5 rounded-md text-sm font-medium text-muted-foreground data-[state=active]:bg-sidebar-accent data-[state=active]:text-sidebar-accent-foreground data-[state=active]:shadow-none hover:bg-muted/60 transition-colors">
               Roster
             </TabsTrigger>
           )}
           {isTeacher && course.teacherId === user?.id && (
-            <TabsTrigger value="groups" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-6 h-full font-medium">
+            <TabsTrigger value="groups" className="w-full justify-start px-3 py-1.5 rounded-md text-sm font-medium text-muted-foreground data-[state=active]:bg-sidebar-accent data-[state=active]:text-sidebar-accent-foreground data-[state=active]:shadow-none hover:bg-muted/60 transition-colors">
               Groups
             </TabsTrigger>
           )}
           {isTeacher && course.teacherId === user?.id && (
-            <TabsTrigger value="integrity" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-6 h-full font-medium">
+            <TabsTrigger value="integrity" className="w-full justify-start px-3 py-1.5 rounded-md text-sm font-medium text-muted-foreground data-[state=active]:bg-sidebar-accent data-[state=active]:text-sidebar-accent-foreground data-[state=active]:shadow-none hover:bg-muted/60 transition-colors">
               Integrity
             </TabsTrigger>
           )}
           {isTeacher && course.teacherId === user?.id && (
-            <TabsTrigger value="gradebook" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-6 h-full font-medium">
+            <TabsTrigger value="gradebook" className="w-full justify-start px-3 py-1.5 rounded-md text-sm font-medium text-muted-foreground data-[state=active]:bg-sidebar-accent data-[state=active]:text-sidebar-accent-foreground data-[state=active]:shadow-none hover:bg-muted/60 transition-colors">
               Gradebook
             </TabsTrigger>
           )}
           {isTeacher && course.teacherId === user?.id && (
-            <TabsTrigger value="analytics" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-6 h-full font-medium">
+            <TabsTrigger value="analytics" className="w-full justify-start px-3 py-1.5 rounded-md text-sm font-medium text-muted-foreground data-[state=active]:bg-sidebar-accent data-[state=active]:text-sidebar-accent-foreground data-[state=active]:shadow-none hover:bg-muted/60 transition-colors">
               Analytics
             </TabsTrigger>
           )}
         </TabsList>
 
+        <div className="flex-1 min-w-0 w-full">
         <TabsContent value="assignments" className="space-y-4">
           <div className="flex flex-col items-start gap-3 sm:flex-row sm:justify-between sm:items-center mb-4">
             <h2 className="text-xl font-semibold tracking-tight">Course Work</h2>
@@ -355,6 +356,7 @@ export default function CourseViewPage({ id }: { id: string }) {
             <AnalyticsPanel courseId={courseId} />
           </TabsContent>
         )}
+        </div>
       </Tabs>
     </PageContainer>
   );
