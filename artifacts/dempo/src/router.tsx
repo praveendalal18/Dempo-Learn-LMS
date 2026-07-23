@@ -44,6 +44,7 @@ import CoordinatorPage from "@/pages/coordinator";
 import FeedbackPage from "@/pages/feedback";
 import AnalyticsPage from "@/pages/analytics";
 import AnalyticsCoursePage from "@/pages/analytics-course";
+import MyPlanPage from "@/pages/my-plan";
 
 function ProtectedRoute({ component: Component, ...rest }: any) {
   const { isLoaded, isSignedIn } = useAuth();
@@ -146,6 +147,9 @@ export function AppRouter() {
         </Route>
         <Route path="/journal">
           <ProtectedRoute component={JournalPage} />
+        </Route>
+        <Route path="/my-plan">
+          <ProtectedRoute component={MyPlanPage} />
         </Route>
         <Route path="/course/:id">
           {params => <ProtectedRoute component={CourseViewPage} id={params.id} />}
