@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { PageContainer } from "@/components/page";
 import { useQueryClient } from "@tanstack/react-query";
 import { getListMessagesQueryKey } from "@workspace/api-client-react";
 import { Loader2, Send, Search, MessageSquare, ChevronLeft } from "lucide-react";
@@ -25,11 +26,14 @@ export default function MessagesPage() {
   const { data: inbox, isLoading: loadingInbox } = useGetInbox();
   
   return (
-    <div className="h-[calc(100vh-4rem)] md:h-screen p-4 md:p-8 flex gap-6 max-w-7xl mx-auto w-full overflow-hidden">
+    <PageContainer
+      width="wide"
+      className="h-[calc(100vh-4rem)] md:h-screen p-4 md:p-8 flex gap-6 overflow-hidden animate-in fade-in duration-300"
+    >
       {/* Inbox Sidebar — full-width on mobile when no thread is open */}
       <Card className={`${activeThread ? "hidden" : "flex"} md:flex w-full md:w-80 lg:w-96 flex-col shadow-sm shrink-0 h-full border-r`}>
         <div className="p-4 border-b">
-          <h2 className="text-xl font-serif font-bold mb-4">Messages</h2>
+          <h2 className="text-lg font-semibold mb-4">Messages</h2>
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input className="pl-9 bg-muted/50" placeholder="Search conversations..." />
@@ -47,11 +51,11 @@ export default function MessagesPage() {
                   <button
                     key={`${thread.courseId}-${thread.otherUserId}`}
                     onClick={() => setActiveThread({ courseId: thread.courseId, otherUserId: thread.otherUserId, name: thread.otherUserName || thread.courseTitle })}
-                    className={`w-full text-left p-4 hover:bg-muted/50 transition-colors flex gap-3 relative ${isActive ? 'bg-primary/5 hover:bg-primary/5' : ''}`}
+                    className={`w-full text-left p-4 hover:bg-muted/50 transition-colors flex gap-3 relative ${isActive ? 'bg-muted hover:bg-muted' : ''}`}
                   >
-                    {isActive && <div className="absolute left-0 top-0 bottom-0 w-1 bg-primary"></div>}
+                    {isActive && <div className="absolute left-0 top-0 bottom-0 w-1 bg-foreground"></div>}
                     <Avatar className="w-10 h-10 border">
-                      <AvatarFallback className={!thread.otherUserId ? "bg-primary/10 text-primary" : ""}>
+                      <AvatarFallback className={!thread.otherUserId ? "bg-muted text-muted-foreground" : ""}>
                         {thread.otherUserName?.charAt(0) || thread.courseTitle.charAt(0)}
                       </AvatarFallback>
                     </Avatar>
@@ -72,7 +76,7 @@ export default function MessagesPage() {
                       </div>
                     </div>
                     {thread.unreadCount > 0 && (
-                      <div className="w-5 h-5 rounded-full bg-accent text-accent-foreground text-[10px] font-bold flex items-center justify-center mt-1">
+                      <div className="w-5 h-5 rounded-full bg-foreground text-background text-[10px] font-bold flex items-center justify-center mt-1">
                         {thread.unreadCount}
                       </div>
                     )}
@@ -96,12 +100,12 @@ export default function MessagesPage() {
         ) : (
           <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground bg-muted/10">
             <MessageSquare className="w-16 h-16 text-muted-foreground/20 mb-4" />
-            <h3 className="text-xl font-serif text-foreground mb-2">Your Inbox</h3>
+            <h3 className="text-lg font-semibold text-foreground mb-2">Your Inbox</h3>
             <p>Select a conversation from the sidebar to start messaging.</p>
           </div>
         )}
       </Card>
-    </div>
+    </PageContainer>
   );
 }
 
@@ -170,7 +174,7 @@ function ChatThread({ thread, onBack }: { thread: { courseId: number, otherUserI
       </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-6 bg-slate-50/50 dark:bg-card/50" ref={scrollRef}>
+      <div className="flex-1 overflow-y-auto p-6 bg-muted/20 dark:bg-card/50" ref={scrollRef}>
         {isLoading ? (
           <div className="flex justify-center py-8"><Loader2 className="w-6 h-6 animate-spin text-muted" /></div>
         ) : filteredMessages.length > 0 ? (
@@ -190,7 +194,7 @@ function ChatThread({ thread, onBack }: { thread: { courseId: number, otherUserI
                       </Avatar>
                     )}
                     
-                    <div className={`px-4 py-2.5 rounded-2xl ${isMe ? 'bg-primary text-primary-foreground rounded-br-sm shadow-sm' : 'bg-card border shadow-sm rounded-bl-sm'}`}>
+                    <div className={`px-4 py-2.5 rounded-2xl ${isMe ? 'bg-foreground text-background rounded-br-sm' : 'bg-card border rounded-bl-sm'}`}>
                       <p className="whitespace-pre-wrap text-sm leading-relaxed">{msg.body}</p>
                     </div>
                   </div>

@@ -6,6 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { PageContainer, PageHeader } from "@/components/page";
 import { useToast } from "@/hooks/use-toast";
 import { Mail, Copy, Send, Trash2, Loader2, CheckCircle2, Clock, Check } from "lucide-react";
 
@@ -90,13 +91,11 @@ export default function AdminInvitesPage() {
   const emailCount = emails.split(/[\s,;]+/).map((s) => s.trim()).filter(Boolean).length;
 
   return (
-    <div className="p-4 md:p-8 max-w-4xl mx-auto w-full animate-in fade-in duration-500">
-      <div className="mb-6">
-        <h1 className="text-3xl font-serif font-bold text-foreground">Invitations</h1>
-        <p className="text-muted-foreground mt-1">
-          Access is invite-only. Add emails, pick a role and (optionally) cohorts — invitees are placed in those cohorts automatically when they join.
-        </p>
-      </div>
+    <PageContainer className="animate-in fade-in duration-300">
+      <PageHeader
+        title="Invitations"
+        description="Access is invite-only. Add emails, pick a role and (optionally) cohorts — invitees are placed in those cohorts automatically when they join."
+      />
 
       {/* Invite form (handles one or many) */}
       <Card className="shadow-sm mb-8">
@@ -167,7 +166,7 @@ export default function AdminInvitesPage() {
       <Card className="shadow-sm">
         <CardContent className="p-0 divide-y">
           {isLoading ? (
-            <div className="p-12 text-center"><Loader2 className="w-6 h-6 animate-spin mx-auto text-primary" /></div>
+            <div className="p-12 text-center"><Loader2 className="w-6 h-6 animate-spin mx-auto text-muted-foreground" /></div>
           ) : invites && invites.length > 0 ? (
             invites.map((inv) => (
               <div key={inv.id} className="flex flex-col sm:flex-row sm:items-center gap-3 p-4">
@@ -176,7 +175,7 @@ export default function AdminInvitesPage() {
                     <span className="font-medium truncate">{inv.name || inv.email}</span>
                     <Badge variant="secondary" className="capitalize">{inv.role}</Badge>
                     {inv.acceptedAt ? (
-                      <span className="inline-flex items-center gap-1 text-xs text-emerald-600 dark:text-emerald-400"><CheckCircle2 className="w-3.5 h-3.5" /> Joined</span>
+                      <span className="inline-flex items-center gap-1 text-xs text-success"><CheckCircle2 className="w-3.5 h-3.5" /> Joined</span>
                     ) : (
                       <span className="inline-flex items-center gap-1 text-xs text-muted-foreground"><Clock className="w-3.5 h-3.5" /> Pending</span>
                     )}
@@ -209,6 +208,6 @@ export default function AdminInvitesPage() {
           )}
         </CardContent>
       </Card>
-    </div>
+    </PageContainer>
   );
 }

@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
+import { PageContainer, PageHeader } from "@/components/page";
 import { UserCircle, Loader2 } from "lucide-react";
 
 export default function SettingsPage() {
@@ -36,30 +37,30 @@ export default function SettingsPage() {
   };
 
   return (
-    <div className="p-4 md:p-8 max-w-4xl mx-auto w-full animate-in fade-in duration-500">
-      <div className="mb-8">
-        <h1 className="text-3xl font-serif font-bold text-foreground">Settings</h1>
-        <p className="text-muted-foreground mt-1">Manage your account preferences.</p>
-      </div>
+    <PageContainer width="narrow" className="animate-in fade-in duration-300">
+      <PageHeader
+        title="Settings"
+        description="Manage your account preferences."
+      />
 
       <div className="space-y-6">
         <Card className="shadow-sm">
           <CardHeader>
-            <CardTitle className="font-serif">Profile</CardTitle>
+            <CardTitle>Profile</CardTitle>
             <CardDescription>Your personal information as it appears to others in your courses.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
             <div className="flex items-center gap-6">
               <Avatar className="w-20 h-20 border-2">
                 <AvatarImage src={user?.avatarUrl || ''} />
-                <AvatarFallback className="text-2xl bg-primary/5 text-primary">
+                <AvatarFallback className="text-2xl bg-muted text-muted-foreground">
                   {user?.name?.charAt(0) || <UserCircle className="w-8 h-8" />}
                 </AvatarFallback>
               </Avatar>
               <div>
                 <h3 className="font-semibold text-lg">{user?.name}</h3>
                 <p className="text-muted-foreground capitalize flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full bg-primary inline-block"></span>
+                  <span className="w-2 h-2 rounded-full bg-muted-foreground inline-block"></span>
                   {user?.role === "teacher" ? "Professor" : user?.role} Account
                 </p>
                 <div className="mt-2 text-xs text-muted-foreground border px-2 py-1 rounded inline-block bg-muted/50">
@@ -92,7 +93,7 @@ export default function SettingsPage() {
 
         {isTeacher && <TeacherProfileForm user={user} />}
       </div>
-    </div>
+    </PageContainer>
   );
 }
 
@@ -154,7 +155,7 @@ function TeacherProfileForm({ user }: { user: any }) {
   return (
     <Card className="shadow-sm">
       <CardHeader>
-        <CardTitle className="font-serif">Professor Profile</CardTitle>
+        <CardTitle>Professor Profile</CardTitle>
         <CardDescription>Tell students about yourself. This is shown when they view your profile from a course.</CardDescription>
       </CardHeader>
       <CardContent>

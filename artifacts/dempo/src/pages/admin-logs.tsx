@@ -15,7 +15,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Loader2, ScrollText, ChevronLeft, ChevronRight, X } from "lucide-react";
+import { PageContainer, PageHeader } from "@/components/page";
+import { Loader2, ChevronLeft, ChevronRight, X } from "lucide-react";
 
 const PAGE_SIZE = 25;
 
@@ -31,11 +32,11 @@ const ACTION_GROUPS = [
 function levelBadge(level: string) {
   switch (level) {
     case "error":
-      return <Badge variant="destructive">error</Badge>;
+      return <Badge variant="danger">error</Badge>;
     case "warn":
-      return <Badge className="bg-yellow-100 text-yellow-800 hover:bg-yellow-100 dark:bg-yellow-950/50 dark:text-yellow-400 dark:hover:bg-yellow-950/50">warn</Badge>;
+      return <Badge variant="warning">warn</Badge>;
     default:
-      return <Badge variant="secondary">info</Badge>;
+      return <Badge variant="info">info</Badge>;
   }
 }
 
@@ -71,14 +72,11 @@ export default function AdminLogsPage() {
     !!userFilter || level !== "all" || action !== "all" || !!fromDate || !!toDate;
 
   return (
-    <div className="p-6 md:p-8 max-w-6xl mx-auto w-full">
-      <div className="flex items-center gap-3 mb-1">
-        <ScrollText className="w-6 h-6 text-primary" />
-        <h1 className="text-3xl font-serif font-bold text-foreground">Activity Logs</h1>
-      </div>
-      <p className="text-muted-foreground mb-6">
-        Recent activity across the app: sign-ups, role changes, course actions, and grading.
-      </p>
+    <PageContainer width="wide" className="animate-in fade-in duration-300">
+      <PageHeader
+        title="Activity Logs"
+        description="Recent activity across the app: sign-ups, role changes, course actions, and grading."
+      />
 
       <Card className="mb-6">
         <CardHeader className="pb-2">
@@ -188,7 +186,7 @@ export default function AdminLogsPage() {
         <CardContent className="p-0">
           {isLoading ? (
             <div className="flex justify-center py-16">
-              <Loader2 className="w-6 h-6 animate-spin text-primary" />
+              <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
             </div>
           ) : !data || data.items.length === 0 ? (
             <div className="text-center py-16 text-muted-foreground">
@@ -208,7 +206,7 @@ export default function AdminLogsPage() {
                 </thead>
                 <tbody>
                   {data.items.map((log) => (
-                    <tr key={log.id} className="border-b last:border-b-0 hover:bg-muted/40 align-top">
+                    <tr key={log.id} className="border-b last:border-b-0 hover:bg-muted/50 align-top">
                       <td className="px-4 py-3 whitespace-nowrap text-muted-foreground">
                         {new Date(log.createdAt).toLocaleString(undefined, {
                           month: "short",
@@ -267,6 +265,6 @@ export default function AdminLogsPage() {
           </div>
         </div>
       )}
-    </div>
+    </PageContainer>
   );
 }

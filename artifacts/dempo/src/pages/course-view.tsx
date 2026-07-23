@@ -13,6 +13,8 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { PageContainer } from "@/components/page";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -90,23 +92,22 @@ export default function CourseViewPage({ id }: { id: string }) {
   if (!course) return <div className="p-8 text-center text-muted-foreground mt-20">Course not found.</div>;
 
   return (
-    <div className="p-4 md:p-8 max-w-6xl mx-auto w-full animate-in fade-in duration-500">
+    <PageContainer width="wide">
       {/* Header */}
-      <div className="bg-card rounded-xl p-8 border mb-8 shadow-sm relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-64 h-64 bg-primary/5 rounded-full -translate-y-1/2 translate-x-1/3 blur-3xl pointer-events-none"></div>
-        <div className="relative z-10">
+      <div className="bg-card rounded-lg p-6 border mb-8">
+        <div>
           <div className="flex items-center gap-2 mb-2">
-            <span className="px-2.5 py-1 bg-primary/10 text-primary text-xs font-semibold rounded-full uppercase tracking-wider">
+            <span className="px-2.5 py-1 bg-muted text-muted-foreground border text-xs font-semibold rounded-md uppercase tracking-wider">
               {isTeacher ? 'Instructor View' : 'Student View'}
             </span>
           </div>
           <div className="flex items-start gap-3 mb-3">
-            <h1 className="text-2xl md:text-4xl font-serif font-bold text-foreground">{course.title}</h1>
+            <h1 className="text-2xl md:text-3xl font-semibold tracking-tight text-foreground">{course.title}</h1>
             {isTeacher && course.teacherId === user?.id && (
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-8 w-8 shrink-0 mt-1 text-muted-foreground hover:text-primary"
+                className="h-8 w-8 shrink-0 mt-1 text-muted-foreground hover:text-foreground"
                 onClick={() => setEditCourseOpen(true)}
                 title="Edit course name"
               >
@@ -114,7 +115,7 @@ export default function CourseViewPage({ id }: { id: string }) {
               </Button>
             )}
           </div>
-          {course.description && <p className="text-lg text-muted-foreground max-w-2xl">{course.description}</p>}
+          {course.description && <p className="text-base text-muted-foreground max-w-2xl">{course.description}</p>}
           {isTeacher && course.teacherId === user?.id && (
             <EditCourseDialog
               courseId={courseId}
@@ -125,17 +126,17 @@ export default function CourseViewPage({ id }: { id: string }) {
             />
           )}
           
-          <div className="flex flex-wrap items-center gap-6 mt-8 pt-6 border-t border-border/50">
+          <div className="flex flex-wrap items-center gap-6 mt-6 pt-6 border-t border-border">
             <button
               type="button"
               onClick={() => setTeacherProfileOpen(true)}
-              className="flex items-center gap-2 rounded-md hover:bg-muted/60 transition-colors px-2 py-1 -mx-2 -my-1 cursor-pointer"
+              className="flex items-center gap-2 rounded-md hover:bg-muted transition-colors px-2 py-1 -mx-2 -my-1 cursor-pointer"
               title="View professor profile"
             >
               <Avatar className="w-8 h-8 border">
-                <AvatarFallback className="bg-primary/5">{course.teacherName?.charAt(0) || 'T'}</AvatarFallback>
+                <AvatarFallback className="bg-muted text-muted-foreground">{course.teacherName?.charAt(0) || 'T'}</AvatarFallback>
               </Avatar>
-              <span className="text-sm font-medium hover:text-primary transition-colors">{course.teacherName}</span>
+              <span className="text-sm font-medium hover:text-foreground transition-colors">{course.teacherName}</span>
             </button>
             {course.teacherId && (
               <TeacherProfileDialog
@@ -218,7 +219,7 @@ export default function CourseViewPage({ id }: { id: string }) {
 
         <TabsContent value="assignments" className="space-y-4">
           <div className="flex flex-col items-start gap-3 sm:flex-row sm:justify-between sm:items-center mb-4">
-            <h2 className="text-xl font-serif font-semibold">Course Work</h2>
+            <h2 className="text-xl font-semibold tracking-tight">Course Work</h2>
             {isTeacher && (
               <div className="flex gap-2">
                 <QuizFormDialog courseId={courseId} />
@@ -229,7 +230,7 @@ export default function CourseViewPage({ id }: { id: string }) {
 
           {loadingAssignments || loadingQuizzes ? (
             <div className="space-y-3">
-              {[1,2].map(i => <div key={i} className="h-24 bg-card rounded-xl border animate-pulse"></div>)}
+              {[1,2].map(i => <div key={i} className="h-24 bg-card rounded-lg border animate-pulse"></div>)}
             </div>
           ) : (assignments && assignments.length > 0) || (quizzes && quizzes.length > 0) ? (
             <div className="space-y-4">
@@ -243,7 +244,7 @@ export default function CourseViewPage({ id }: { id: string }) {
           ) : (
             <Card className="border-dashed">
               <CardContent className="p-12 text-center text-muted-foreground flex flex-col items-center">
-                <FileText className="w-12 h-12 text-muted mb-4" />
+                <FileText className="w-12 h-12 text-muted-foreground mb-4" />
                 <h3 className="text-lg font-medium text-foreground mb-2">No course work yet</h3>
                 <p className="max-w-sm">
                   {isTeacher ? "Create the first assignment or quiz to engage your students." : "Your professor hasn't posted any work yet."}
@@ -294,7 +295,7 @@ export default function CourseViewPage({ id }: { id: string }) {
           </TabsContent>
         )}
       </Tabs>
-    </div>
+    </PageContainer>
   );
 }
 
@@ -303,10 +304,10 @@ function QuizCard({ quiz, isTeacher }: { quiz: any, isTeacher: boolean }) {
 
   return (
     <Link href={`/quiz/${quiz.id}`}>
-      <Card className="hover:border-primary transition-all cursor-pointer group flex flex-col sm:flex-row shadow-sm">
-        <div className="p-6 sm:w-64 border-b sm:border-b-0 sm:border-r bg-primary/5 flex flex-col justify-center shrink-0">
+      <Card className="hover:border-foreground/30 transition-colors cursor-pointer group flex flex-col sm:flex-row">
+        <div className="p-6 sm:w-64 border-b sm:border-b-0 sm:border-r bg-muted/30 flex flex-col justify-center shrink-0">
           <div className="text-xs uppercase font-bold text-muted-foreground mb-1 tracking-wider">Due Date</div>
-          <div className={`font-medium ${isPastDue ? 'text-destructive' : 'text-foreground'} flex items-center gap-2`}>
+          <div className={`font-medium ${isPastDue ? 'text-danger' : 'text-foreground'} flex items-center gap-2`}>
             <Clock className="w-4 h-4" />
             {quiz.dueDate ? format(new Date(quiz.dueDate), 'MMM d, yyyy h:mm a') : 'No Due Date'}
           </div>
@@ -320,25 +321,25 @@ function QuizCard({ quiz, isTeacher }: { quiz: any, isTeacher: boolean }) {
           <div className="flex justify-between items-start">
             <div>
               <div className="flex items-center gap-2 mb-2">
-                <h3 className="text-xl font-serif font-bold group-hover:text-primary transition-colors">{quiz.title}</h3>
+                <h3 className="text-xl font-semibold tracking-tight group-hover:text-foreground transition-colors">{quiz.title}</h3>
                 {isTeacher && quiz.status !== 'published' && (
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wider bg-amber-100 text-amber-700 dark:bg-amber-950/50 dark:text-amber-400">Draft</span>
+                  <Badge variant="warning" className="uppercase tracking-wider">Draft</Badge>
                 )}
               </div>
               <p className="text-muted-foreground line-clamp-2 text-sm">{quiz.description || "No description provided."}</p>
             </div>
 
             {!isTeacher && quiz.myAttempt && (
-              <span className="shrink-0 ml-4 px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-wider bg-green-100 text-green-700 dark:bg-green-950/50 dark:text-green-400">
+              <Badge variant="success" className="shrink-0 ml-4 uppercase tracking-wider">
                 {quiz.resultsPublishedAt && quiz.myAttempt.score != null
                   ? `${quiz.myAttempt.score}/${quiz.myAttempt.maxScore}`
                   : 'Submitted'}
-              </span>
+              </Badge>
             )}
 
             {isTeacher && (
               <div className="shrink-0 ml-4 text-center px-4 py-2 bg-muted/50 rounded-lg border">
-                <div className="text-2xl font-bold text-primary">{quiz.attemptCount || 0}</div>
+                <div className="text-2xl font-bold text-foreground">{quiz.attemptCount || 0}</div>
                 <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider mt-1">Attempts</div>
               </div>
             )}
@@ -359,10 +360,10 @@ function AssignmentCard({ assignment, isTeacher }: { assignment: any, isTeacher:
       <EditAssignmentDialog assignment={assignment} open={editOpen} onOpenChange={setEditOpen} />
     )}
     <Link href={`/assignment/${assignment.id}`}>
-      <Card className="hover:border-primary transition-all cursor-pointer group flex flex-col sm:flex-row shadow-sm">
+      <Card className="hover:border-foreground/30 transition-colors cursor-pointer group flex flex-col sm:flex-row">
         <div className="p-6 sm:w-64 border-b sm:border-b-0 sm:border-r bg-muted/20 flex flex-col justify-center shrink-0">
           <div className="text-xs uppercase font-bold text-muted-foreground mb-1 tracking-wider">Due Date</div>
-          <div className={`font-medium ${isPastDue ? 'text-destructive' : 'text-foreground'} flex items-center gap-2`}>
+          <div className={`font-medium ${isPastDue ? 'text-danger' : 'text-foreground'} flex items-center gap-2`}>
             <Clock className="w-4 h-4" />
             {assignment.dueDate ? format(new Date(assignment.dueDate), 'MMM d, yyyy h:mm a') : 'No Due Date'}
           </div>
@@ -383,29 +384,29 @@ function AssignmentCard({ assignment, isTeacher }: { assignment: any, isTeacher:
         <CardContent className="p-6 flex-1 flex flex-col justify-center">
           <div className="flex justify-between items-start">
             <div>
-              <h3 className="text-xl font-serif font-bold group-hover:text-primary transition-colors mb-2">{assignment.title}</h3>
+              <h3 className="text-xl font-semibold tracking-tight group-hover:text-foreground transition-colors mb-2">{assignment.title}</h3>
               <p className="text-muted-foreground line-clamp-2 text-sm">{assignment.description || "No description provided."}</p>
             </div>
-            
+
             {!isTeacher && assignment.mySubmissionStatus && (
-              <span className="shrink-0 ml-4 px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-wider bg-green-100 text-green-700 dark:bg-green-950/50 dark:text-green-400">
+              <Badge variant="success" className="shrink-0 ml-4 uppercase tracking-wider">
                 {assignment.mySubmissionStatus}
-              </span>
+              </Badge>
             )}
-            
+
             {isTeacher && (
               <div className="shrink-0 ml-4 flex items-start gap-2">
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="w-8 h-8 text-muted-foreground hover:text-primary"
+                  className="w-8 h-8 text-muted-foreground hover:text-foreground"
                   title="Edit assignment"
                   onClick={(e) => { e.preventDefault(); e.stopPropagation(); setEditOpen(true); }}
                 >
                   <Pencil className="w-4 h-4" />
                 </Button>
                 <div className="text-center px-4 py-2 bg-muted/50 rounded-lg border">
-                  <div className="text-2xl font-bold text-primary">{assignment.submissionCount || 0}</div>
+                  <div className="text-2xl font-bold text-foreground">{assignment.submissionCount || 0}</div>
                   <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider mt-1">Submissions</div>
                 </div>
               </div>
@@ -566,7 +567,7 @@ function CreateAssignmentDialog({ courseId }: { courseId: number }) {
       </DialogTrigger>
       <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="font-serif text-2xl">Create Assignment</DialogTitle>
+          <DialogTitle className="text-2xl font-semibold tracking-tight">Create Assignment</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-6 pt-4">
           <div className="space-y-2">
@@ -869,15 +870,15 @@ function RosterView({ courseId }: { courseId: number }) {
     </AlertDialog>
     <div className="grid md:grid-cols-3 gap-8">
       <div className="md:col-span-2">
-        <h2 className="text-xl font-serif font-semibold mb-4">Enrolled Students ({students?.length || 0})</h2>
-        <Card className="shadow-sm">
+        <h2 className="text-xl font-semibold tracking-tight mb-4">Enrolled Students ({students?.length || 0})</h2>
+        <Card>
           <CardContent className="p-0 divide-y">
             {students && students.length > 0 ? (
               students.map(student => (
                 <div key={student.id} className="flex items-center p-4 hover:bg-muted/50 transition-colors">
                   <Avatar className="w-10 h-10 mr-4 border">
                     <AvatarImage src={student.avatarUrl || ''} />
-                    <AvatarFallback className="bg-primary/5">{student.name?.charAt(0) || 'S'}</AvatarFallback>
+                    <AvatarFallback className="bg-muted text-muted-foreground">{student.name?.charAt(0) || 'S'}</AvatarFallback>
                   </Avatar>
                   <div className="flex-1 min-w-0">
                     <div className="font-medium">{student.name}</div>
@@ -904,8 +905,8 @@ function RosterView({ courseId }: { courseId: number }) {
       </div>
       
       <div>
-        <h2 className="text-xl font-serif font-semibold mb-4">Add Students</h2>
-        <Card className="shadow-sm">
+        <h2 className="text-xl font-semibold tracking-tight mb-4">Add Students</h2>
+        <Card>
           <CardContent className="p-6 space-y-6">
             <AddStudentsPanel courseId={courseId} />
             <InviteCohortSection courseId={courseId} />
@@ -991,12 +992,12 @@ function AddStudentsPanel({ courseId }: { courseId: number }) {
                 key={c.id}
                 type="button"
                 onClick={() => toggle(c.id)}
-                className={`w-full flex items-center gap-3 p-2.5 text-left transition-colors ${on ? "bg-primary/5" : "hover:bg-muted/50"}`}
+                className={`w-full flex items-center gap-3 p-2.5 text-left transition-colors ${on ? "bg-muted" : "hover:bg-muted/50"}`}
               >
                 <Checkbox checked={on} className="pointer-events-none" />
                 <Avatar className="w-8 h-8 border shrink-0">
                   <AvatarImage src={c.avatarUrl || ""} />
-                  <AvatarFallback className="bg-primary/5 text-xs">{c.name?.charAt(0) || "S"}</AvatarFallback>
+                  <AvatarFallback className="bg-muted text-muted-foreground text-xs">{c.name?.charAt(0) || "S"}</AvatarFallback>
                 </Avatar>
                 <div className="min-w-0 flex-1">
                   <div className="text-sm font-medium truncate">{c.name || c.email}</div>
@@ -1138,7 +1139,7 @@ function EditCourseDialog({
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-[480px]">
         <DialogHeader>
-          <DialogTitle className="font-serif text-2xl">Edit course</DialogTitle>
+          <DialogTitle className="text-2xl font-semibold tracking-tight">Edit course</DialogTitle>
         </DialogHeader>
         <div className="space-y-4 pt-2">
           <div className="space-y-2">

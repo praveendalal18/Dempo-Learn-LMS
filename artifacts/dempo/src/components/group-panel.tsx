@@ -40,7 +40,7 @@ export function GroupRosterCard({ group, title = "Group" }: { group: GroupInfo; 
               </Avatar>
               <span className="truncate">{m.name || m.email || m.id}</span>
               {m.isLeader && (
-                <span className="flex items-center gap-1 text-xs text-amber-600 dark:text-amber-400 font-medium">
+                <span className="flex items-center gap-1 text-xs text-warning font-medium">
                   <Crown className="w-3 h-3" /> Leader
                 </span>
               )}
@@ -186,7 +186,7 @@ export function GroupTasksPanel({
                       </Select>
                       <Button
                         type="button" size="icon" variant="ghost"
-                        className="w-8 h-8 text-green-600 hover:text-green-700 shrink-0"
+                        className="w-8 h-8 text-success hover:text-success/80 shrink-0"
                         onClick={() => handleSaveEdit(task.id)}
                         disabled={updateTask.isPending || !editDescription.trim() || !editAssigneeId}
                       >

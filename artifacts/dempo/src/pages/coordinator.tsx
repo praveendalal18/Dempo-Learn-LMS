@@ -14,7 +14,8 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { CourseSchedule } from "@/components/course-schedule";
-import { Loader2, BookOpen, CalendarClock } from "lucide-react";
+import { PageContainer, PageHeader } from "@/components/page";
+import { Loader2, CalendarClock } from "lucide-react";
 
 export default function CoordinatorPage() {
   const [scheduling, setScheduling] = useState<OversightCourse | null>(null);
@@ -23,14 +24,11 @@ export default function CoordinatorPage() {
   });
 
   return (
-    <div className="p-6 md:p-8 max-w-6xl mx-auto w-full">
-      <div className="flex items-center gap-3 mb-1">
-        <BookOpen className="w-6 h-6 text-primary" />
-        <h1 className="text-3xl font-serif font-bold text-foreground">Courses</h1>
-      </div>
-      <p className="text-muted-foreground mb-6">
-        Courses assigned to you. As course coordinator you can set each course's schedule and timeslots; everything else is read-only.
-      </p>
+    <PageContainer className="animate-in fade-in duration-300">
+      <PageHeader
+        title="Courses"
+        description="Courses assigned to you. As course coordinator you can set each course's schedule and timeslots; everything else is read-only."
+      />
 
       <Card>
         <CardHeader className="pb-2">
@@ -41,7 +39,7 @@ export default function CoordinatorPage() {
         </CardHeader>
         <CardContent className="p-0">
           {isLoading ? (
-            <div className="flex justify-center py-16"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>
+            <div className="flex justify-center py-16"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>
           ) : !courses?.length ? (
             <div className="text-center py-16 text-muted-foreground">
               No courses assigned to you yet. An admin can assign courses from the Users page.
@@ -95,6 +93,6 @@ export default function CoordinatorPage() {
           {scheduling && <CourseSchedule courseId={scheduling.id} isTeacher />}
         </DialogContent>
       </Dialog>
-    </div>
+    </PageContainer>
   );
 }

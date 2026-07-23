@@ -196,7 +196,7 @@ function StudentPlanView({ plan, extras }: { plan: any; extras?: PlanExtras }) {
         const time = dayTimes[String(day)] || defaultTime;
         return (
           <Card key={day} className={`overflow-hidden border shadow-sm rounded-xl transition-shadow hover:shadow-md ${dayLocked ? 'opacity-95' : ''}`}>
-            <div className={`px-5 py-3.5 border-b flex items-center justify-between gap-3 flex-wrap ${dayLocked ? 'bg-muted/40' : 'bg-gradient-to-r from-primary/[0.07] to-transparent'}`}>
+            <div className={`px-5 py-3.5 border-b flex items-center justify-between gap-3 flex-wrap ${dayLocked ? 'bg-muted/40' : 'bg-muted/40'}`}>
               <div className="flex items-center gap-3 flex-wrap">
                 <span className="inline-flex items-center justify-center min-w-9 h-9 px-2 rounded-lg bg-primary/10 text-primary font-serif font-bold text-base">{day}</span>
                 <h3 className="font-serif font-semibold text-lg leading-none">{unit} {day}</h3>
@@ -657,7 +657,7 @@ function TeacherPlanEditor({ courseId, plan, extras }: { courseId: number; plan:
         const dayHours = Array.from({ length: hoursPerDay }, (_, h) => (day - 1) * hoursPerDay + h + 1).filter(h => h <= totalHours);
         return (
           <Card key={day} className="overflow-hidden border shadow-sm rounded-xl transition-shadow hover:shadow-md">
-            <div className={`px-5 py-3.5 border-b flex items-center justify-between gap-3 flex-wrap ${locked ? "bg-muted/40" : "bg-gradient-to-r from-primary/[0.07] to-transparent"}`}>
+            <div className={`px-5 py-3.5 border-b flex items-center justify-between gap-3 flex-wrap ${locked ? "bg-muted/40" : "bg-muted/40"}`}>
               <div className="flex items-center gap-3 flex-wrap">
                 <span className="inline-flex items-center justify-center min-w-9 h-9 px-2 rounded-lg bg-primary/10 text-primary font-serif font-bold text-base">{day}</span>
                 <h3 className="font-serif font-semibold text-lg leading-none">{unit} {day}</h3>
@@ -681,7 +681,7 @@ function TeacherPlanEditor({ courseId, plan, extras }: { courseId: number; plan:
               <button
                 type="button"
                 onClick={() => toggleDayLock(day)}
-                className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border transition-colors ${locked ? "bg-muted text-muted-foreground border-transparent hover:bg-muted/70" : "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/20 hover:bg-emerald-500/20"}`}
+                className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border transition-colors ${locked ? "bg-muted text-muted-foreground border-transparent hover:bg-muted/70" : "bg-success/10 text-success border-success/20 hover:bg-success/15"}`}
                 title={locked ? "Locked — students see the title only. Click to reveal." : "Visible — students see full details. Click to lock."}
               >
                 {locked ? <><EyeOff className="w-3.5 h-3.5" /> Title only</> : <><Eye className="w-3.5 h-3.5" /> Visible</>}
@@ -764,9 +764,9 @@ function TeacherPlanEditor({ courseId, plan, extras }: { courseId: number; plan:
 }
 
 const PANEL_TINTS: Record<string, string> = {
-  sky: "border-sky-500/20 bg-sky-500/[0.04]",
-  violet: "border-violet-500/20 bg-violet-500/[0.04]",
-  amber: "border-amber-500/20 bg-amber-500/[0.04]",
+  sky: "border-border bg-muted/40",
+  violet: "border-border bg-muted/40",
+  amber: "border-border bg-muted/40",
 };
 
 function EditPanel({ icon: Icon, label, tint, children }: { icon: any; label: string; tint: string; children: ReactNode }) {

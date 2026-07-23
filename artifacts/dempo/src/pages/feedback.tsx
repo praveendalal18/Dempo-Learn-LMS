@@ -10,7 +10,8 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Loader2, MessageSquare, CheckCheck } from "lucide-react";
+import { PageContainer, PageHeader } from "@/components/page";
+import { Loader2, CheckCheck } from "lucide-react";
 import { format } from "date-fns";
 
 function NoteCard({
@@ -26,7 +27,7 @@ function NoteCard({
 }) {
   const unread = direction === "received" && !note.readAt;
   return (
-    <li className={`px-4 py-3 ${unread ? "bg-primary/5" : ""}`}>
+    <li className={`px-4 py-3 ${unread ? "bg-muted/50" : ""}`}>
       <div className="flex items-start gap-3">
         <div className="flex flex-col flex-1 overflow-hidden">
           <div className="flex items-center gap-2 flex-wrap">
@@ -35,7 +36,7 @@ function NoteCard({
                 ? note.senderName ?? "Dean"
                 : `To: ${note.recipientName ?? note.recipientId}`}
             </span>
-            {unread && <Badge className="bg-primary/10 text-primary hover:bg-primary/10">New</Badge>}
+            {unread && <Badge variant="info">New</Badge>}
             <span className="text-xs text-muted-foreground ml-auto whitespace-nowrap">
               {format(new Date(note.createdAt), "MMM d, yyyy h:mm a")}
             </span>
@@ -72,18 +73,15 @@ export default function FeedbackPage() {
   const isDean = me?.role === "dean";
 
   return (
-    <div className="p-6 md:p-8 max-w-4xl mx-auto w-full space-y-6">
-      <div>
-        <div className="flex items-center gap-3 mb-1">
-          <MessageSquare className="w-6 h-6 text-primary" />
-          <h1 className="text-3xl font-serif font-bold text-foreground">Feedback</h1>
-        </div>
-        <p className="text-muted-foreground">
-          {isDean
+    <PageContainer width="narrow" className="animate-in fade-in duration-300 space-y-6">
+      <PageHeader
+        title="Feedback"
+        description={
+          isDean
             ? "Feedback notes you have sent to professors and course coordinators."
-            : "Private feedback notes from the dean."}
-        </p>
-      </div>
+            : "Private feedback notes from the dean."
+        }
+      />
 
       <Card>
         <CardHeader className="pb-2">
@@ -94,7 +92,7 @@ export default function FeedbackPage() {
         </CardHeader>
         <CardContent className="p-0">
           {isLoading ? (
-            <div className="flex justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>
+            <div className="flex justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>
           ) : !data?.received.length ? (
             <div className="text-center py-12 text-muted-foreground">No feedback received yet.</div>
           ) : (
@@ -134,6 +132,6 @@ export default function FeedbackPage() {
           </CardContent>
         </Card>
       )}
-    </div>
+    </PageContainer>
   );
 }

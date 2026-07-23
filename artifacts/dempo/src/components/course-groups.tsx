@@ -142,7 +142,7 @@ function GroupFormDialog({
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2">
-              <AlertTriangle className="w-5 h-5 text-amber-500" />
+              <AlertTriangle className="w-5 h-5 text-warning" />
               Removing members has consequences
             </AlertDialogTitle>
             <AlertDialogDescription asChild>
@@ -399,7 +399,7 @@ export function CourseGroupsView({ courseId }: { courseId: number }) {
                       </Avatar>
                       <span className="truncate">{m.name || m.email}</span>
                       {m.isLeader && (
-                        <span className="flex items-center gap-1 text-xs text-amber-600 dark:text-amber-400 font-medium">
+                        <span className="flex items-center gap-1 text-xs text-warning font-medium">
                           <Crown className="w-3 h-3" /> Leader
                         </span>
                       )}

@@ -32,6 +32,7 @@ import { Link } from "wouter";
 import { format, isAfter } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { PageContainer, PageHeader } from "@/components/page";
 import { useEffect, useState } from "react";
 
 const LEADERBOARD_COURSE_KEY = "dashboard-leaderboard-course";
@@ -151,7 +152,7 @@ function MiniLeaderboard({ courses }: { courses: { id: number; title: string }[]
                   <div
                     className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${
                       entry.rank === 1
-                        ? "bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-400"
+                        ? "bg-warning/15 text-warning"
                         : "bg-muted text-muted-foreground"
                     }`}
                   >
@@ -217,7 +218,7 @@ function StudentDashboard() {
             <BookOpen className="w-4 h-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold">{dashboard?.courseCount || 0}</div>
+            <div className="text-3xl font-semibold">{dashboard?.courseCount || 0}</div>
           </CardContent>
         </Card>
         <Card>
@@ -226,7 +227,7 @@ function StudentDashboard() {
             <Clock className="w-4 h-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold">{upcomingAssignments.length}</div>
+            <div className="text-3xl font-semibold">{upcomingAssignments.length}</div>
           </CardContent>
         </Card>
         <Card>
@@ -235,7 +236,7 @@ function StudentDashboard() {
             <Bell className="w-4 h-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold">{notifications?.unreadCount ?? 0}</div>
+            <div className="text-3xl font-semibold">{notifications?.unreadCount ?? 0}</div>
           </CardContent>
         </Card>
       </div>
@@ -275,12 +276,12 @@ function StudentDashboard() {
                     <Card className="hover:border-primary transition-colors cursor-pointer group">
                       <CardContent className="p-4 flex items-center justify-between">
                         <div className="flex gap-4">
-                          <div className="w-10 h-10 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                          <div className="w-10 h-10 rounded-lg bg-muted text-muted-foreground flex items-center justify-center shrink-0">
                             <FileText className="w-5 h-5" />
                           </div>
                           <div>
                             <div className="font-medium group-hover:text-primary transition-colors">{assignment.title}</div>
-                            <div className="text-sm text-accent font-medium mt-0.5 flex items-center gap-1">
+                            <div className="text-sm text-warning font-medium mt-0.5 flex items-center gap-1">
                               <Clock className="w-3 h-3" />
                               Due {assignment.dueDate ? format(new Date(assignment.dueDate), "MMM d, h:mm a") : "No date"}
                             </div>
@@ -294,7 +295,7 @@ function StudentDashboard() {
               ) : (
                 <Card className="border-dashed">
                   <CardContent className="p-8 text-center text-muted-foreground flex flex-col items-center">
-                    <CheckCircle className="w-8 h-8 text-green-500 mb-2 opacity-50" />
+                    <CheckCircle className="w-8 h-8 text-success mb-2 opacity-50" />
                     You're all caught up! No assignments due soon.
                   </CardContent>
                 </Card>
@@ -327,11 +328,11 @@ function StudentDashboard() {
                             </span>
                           )}
                           {sub.status === "graded" ? (
-                            <span className="text-sm font-medium text-green-700 bg-green-100 dark:text-green-400 dark:bg-green-950 px-2 py-1 rounded">
+                            <span className="text-sm font-medium text-success bg-success/10 px-2 py-1 rounded">
                               {sub.score ?? "—"}/{sub.maxScore ?? "—"}
                             </span>
                           ) : (
-                            <span className="text-xs font-medium text-accent bg-accent/10 px-2 py-1 rounded">Awaiting grade</span>
+                            <span className="text-xs font-medium text-warning bg-warning/10 px-2 py-1 rounded">Awaiting grade</span>
                           )}
                         </div>
                       </div>
@@ -356,7 +357,7 @@ function StudentDashboard() {
                 {upcomingSessions.length > 0 ? (
                   upcomingSessions.map((session) => (
                     <div key={session.id} className="flex items-start gap-3 p-4">
-                      <div className="w-10 h-10 rounded-lg bg-accent/10 text-accent flex items-center justify-center shrink-0">
+                      <div className="w-10 h-10 rounded-lg bg-muted text-muted-foreground flex items-center justify-center shrink-0">
                         <CalendarDays className="w-5 h-5" />
                       </div>
                       <div className="min-w-0">
@@ -437,7 +438,7 @@ function TeacherIntegritySummary({
             flags.map((flag) => (
               <Link key={flag.courseId} href={`/course/${flag.courseId}?tab=integrity`}>
                 <div className="flex items-center gap-3 p-4 hover:bg-muted/50 transition-colors cursor-pointer group">
-                  <div className="w-10 h-10 rounded-lg bg-destructive/10 text-destructive flex items-center justify-center shrink-0">
+                  <div className="w-10 h-10 rounded-lg bg-danger/10 text-danger flex items-center justify-center shrink-0">
                     <ShieldAlert className="w-5 h-5" />
                   </div>
                   <div className="flex-1 min-w-0">
@@ -457,7 +458,7 @@ function TeacherIntegritySummary({
             ))
           ) : (
             <div className="p-8 text-center text-muted-foreground text-sm flex flex-col items-center">
-              <ShieldCheck className="w-8 h-8 text-green-500 mb-2 opacity-50" />
+              <ShieldCheck className="w-8 h-8 text-success mb-2 opacity-50" />
               No flagged similar work across your courses.
             </div>
           )}
@@ -485,7 +486,7 @@ function TeacherDashboard() {
             <BookOpen className="w-4 h-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold">{dashboard.courseCount || 0}</div>
+            <div className="text-3xl font-semibold">{dashboard.courseCount || 0}</div>
           </CardContent>
         </Card>
         <Card>
@@ -494,25 +495,25 @@ function TeacherDashboard() {
             <GraduationCap className="w-4 h-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold">{dashboard.studentCount || 0}</div>
+            <div className="text-3xl font-semibold">{dashboard.studentCount || 0}</div>
           </CardContent>
         </Card>
-        <Card className={dashboard.pendingGradingCount ? "border-accent bg-accent/5" : ""}>
+        <Card className={dashboard.pendingGradingCount ? "border-warning bg-warning/5" : ""}>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">To Grade</CardTitle>
-            <Clock className={`w-4 h-4 ${dashboard.pendingGradingCount ? "text-accent" : "text-muted-foreground"}`} />
+            <Clock className={`w-4 h-4 ${dashboard.pendingGradingCount ? "text-warning" : "text-muted-foreground"}`} />
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold">{dashboard.pendingGradingCount || 0}</div>
+            <div className="text-3xl font-semibold">{dashboard.pendingGradingCount || 0}</div>
           </CardContent>
         </Card>
-        <Card className={totalFlagged ? "border-destructive/50 bg-destructive/5" : ""}>
+        <Card className={totalFlagged ? "border-danger/50 bg-danger/5" : ""}>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">Flagged Similar Work</CardTitle>
-            <ShieldAlert className={`w-4 h-4 ${totalFlagged ? "text-destructive" : "text-muted-foreground"}`} />
+            <ShieldAlert className={`w-4 h-4 ${totalFlagged ? "text-danger" : "text-muted-foreground"}`} />
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold">{totalFlagged}</div>
+            <div className="text-3xl font-semibold">{totalFlagged}</div>
           </CardContent>
         </Card>
       </div>
@@ -535,11 +536,11 @@ function TeacherDashboard() {
                         </div>
                         <div className="flex items-center gap-3">
                           {sub.status === "graded" ? (
-                            <span className="text-sm font-medium text-green-600 bg-green-50 dark:text-green-400 dark:bg-green-950/50 px-2 py-1 rounded">
+                            <span className="text-sm font-medium text-success bg-success/10 px-2 py-1 rounded">
                               Graded: {sub.score}/{sub.maxScore}
                             </span>
                           ) : (
-                            <span className="text-sm font-medium text-accent bg-accent/10 px-2 py-1 rounded flex items-center gap-1">
+                            <span className="text-sm font-medium text-warning bg-warning/10 px-2 py-1 rounded flex items-center gap-1">
                               Needs Grading
                             </span>
                           )}
@@ -610,15 +611,14 @@ export default function DashboardPage() {
   const isTeacher = user?.role === "teacher";
 
   return (
-    <div className="p-4 md:p-8 max-w-6xl mx-auto w-full space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-      <header>
-        <h1 className="text-3xl font-serif font-bold text-foreground">
-          Welcome back, {user?.name?.split(" ")[0] || "User"}
-        </h1>
-        <p className="text-muted-foreground mt-2 text-lg">Here is your overview for today.</p>
-      </header>
-
-      {isTeacher ? <TeacherDashboard /> : <StudentDashboard />}
-    </div>
+    <PageContainer width="wide" className="animate-in fade-in duration-300">
+      <PageHeader
+        title={`Welcome back, ${user?.name?.split(" ")[0] || "User"}`}
+        description="Here is your overview for today."
+      />
+      <div className="space-y-8">
+        {isTeacher ? <TeacherDashboard /> : <StudentDashboard />}
+      </div>
+    </PageContainer>
   );
 }

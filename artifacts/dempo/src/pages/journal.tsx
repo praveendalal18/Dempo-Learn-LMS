@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { PageContainer, PageHeader } from "@/components/page";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
@@ -106,34 +107,34 @@ export default function JournalPage() {
     cohorts?.find((c) => c.id === cohortId) ?? cohorts?.[0] ?? null;
 
   return (
-    <div className="p-6 sm:p-8 max-w-7xl mx-auto w-full">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-        <div>
-          <h1 className="text-3xl font-serif font-bold text-foreground flex items-center gap-2">
-            <NotebookPen className="w-7 h-7 text-primary" /> Learning Journal
-          </h1>
-          <p className="text-muted-foreground mt-1">
-            Log what you worked on each day. Everyone in the cohort can see each other's progress.
-          </p>
-        </div>
-        {cohorts && cohorts.length > 0 && (
-          <Select
-            value={String(selected?.id ?? "")}
-            onValueChange={(v) => setCohortId(Number(v))}
-          >
-            <SelectTrigger className="w-full sm:w-[240px]">
-              <SelectValue placeholder="Choose a cohort" />
-            </SelectTrigger>
-            <SelectContent>
-              {cohorts.map((c) => (
-                <SelectItem key={c.id} value={String(c.id)}>
-                  {c.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        )}
-      </div>
+    <PageContainer width="wide" className="animate-in fade-in duration-300">
+      <PageHeader
+        title={
+          <span className="flex items-center gap-2">
+            <NotebookPen className="w-6 h-6 text-muted-foreground" /> Learning Journal
+          </span>
+        }
+        description="Log what you worked on each day. Everyone in the cohort can see each other's progress."
+        actions={
+          cohorts && cohorts.length > 0 ? (
+            <Select
+              value={String(selected?.id ?? "")}
+              onValueChange={(v) => setCohortId(Number(v))}
+            >
+              <SelectTrigger className="w-full sm:w-[240px]">
+                <SelectValue placeholder="Choose a cohort" />
+              </SelectTrigger>
+              <SelectContent>
+                {cohorts.map((c) => (
+                  <SelectItem key={c.id} value={String(c.id)}>
+                    {c.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          ) : undefined
+        }
+      />
 
       {isLoading ? (
         <div className="py-24 text-center">
@@ -152,7 +153,7 @@ export default function JournalPage() {
       ) : selected ? (
         <Board key={selected.id} cohort={selected} />
       ) : null}
-    </div>
+    </PageContainer>
   );
 }
 
@@ -277,11 +278,11 @@ function Board({ cohort }: { cohort: JournalCohort }) {
                             key={e.id}
                             onClick={() => setOpenEntry(e)}
                             className={`w-full text-left text-[11px] leading-tight rounded-md px-2 py-1 truncate transition-colors
-                              ${e.highlighted ? "bg-amber-100 text-amber-900 ring-1 ring-amber-400 dark:bg-amber-500/20 dark:text-amber-200" : "bg-primary/10 text-primary hover:bg-primary/20"}
+                              ${e.highlighted ? "bg-warning/15 text-warning ring-1 ring-warning/40" : "bg-primary/10 text-primary hover:bg-primary/20"}
                               ${e.hidden ? "opacity-50 line-through" : ""}`}
                             title={e.content}
                           >
-                            {e.highlighted && <Star className="w-3 h-3 inline mr-1 -mt-0.5 fill-amber-400 text-amber-500" />}
+                            {e.highlighted && <Star className="w-3 h-3 inline mr-1 -mt-0.5 fill-warning text-warning" />}
                             {e.hidden && <EyeOff className="w-3 h-3 inline mr-1 -mt-0.5" />}
                             {e.content}
                           </button>
@@ -324,11 +325,11 @@ function Board({ cohort }: { cohort: JournalCohort }) {
                       key={e.id}
                       onClick={() => setOpenEntry(e)}
                       className={`w-full text-left rounded-xl border p-3 transition-colors
-                        ${e.highlighted ? "bg-amber-50 border-amber-300 dark:bg-amber-500/10" : "bg-card hover:bg-muted/50"}
+                        ${e.highlighted ? "bg-warning/10 border-warning/30" : "bg-card hover:bg-muted/50"}
                         ${e.hidden ? "opacity-60" : ""}`}
                     >
                       <div className="flex items-center gap-2 mb-1">
-                        {e.highlighted && <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-500 shrink-0" />}
+                        {e.highlighted && <Star className="w-3.5 h-3.5 fill-warning text-warning shrink-0" />}
                         {e.hidden && <EyeOff className="w-3.5 h-3.5 text-muted-foreground shrink-0" />}
                         <span className="text-sm font-medium truncate">
                           {e.studentId === data?.currentUserId ? "You" : nameOf(e.studentId)}
@@ -485,7 +486,7 @@ function EntryDialog({
       <DialogContent className="sm:max-w-[540px]">
         <DialogHeader>
           <DialogTitle className="font-serif flex items-center gap-2">
-            {entry.highlighted && <Star className="w-4 h-4 fill-amber-400 text-amber-500" />}
+            {entry.highlighted && <Star className="w-4 h-4 fill-warning text-warning" />}
             {authorName}
             <span className="text-sm font-normal text-muted-foreground">· {dateLabel}</span>
           </DialogTitle>
@@ -540,7 +541,7 @@ function EntryDialog({
             {canManage && (
               <>
                 <Button size="sm" variant="outline" disabled={moderate.isPending} onClick={() => moderate.mutate({ highlighted: !entry.highlighted })}>
-                  <Star className={`w-4 h-4 mr-1.5 ${entry.highlighted ? "fill-amber-400 text-amber-500" : ""}`} />
+                  <Star className={`w-4 h-4 mr-1.5 ${entry.highlighted ? "fill-warning text-warning" : ""}`} />
                   {entry.highlighted ? "Unhighlight" : "Highlight"}
                 </Button>
                 <Button size="sm" variant="outline" disabled={moderate.isPending} onClick={() => moderate.mutate({ hidden: !entry.hidden })}>

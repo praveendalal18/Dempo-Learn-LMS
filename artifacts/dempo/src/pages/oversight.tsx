@@ -26,13 +26,13 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
+import { PageContainer, PageHeader } from "@/components/page";
 import {
   Loader2,
   BookOpen,
   GraduationCap,
   ShieldAlert,
   Send,
-  Eye,
 } from "lucide-react";
 
 function SendFeedbackDialog({
@@ -129,21 +129,16 @@ export default function OversightPage() {
   });
 
   return (
-    <div className="p-6 md:p-8 max-w-6xl mx-auto w-full space-y-6">
-      <div>
-        <div className="flex items-center gap-3 mb-1">
-          <Eye className="w-6 h-6 text-primary" />
-          <h1 className="text-3xl font-serif font-bold text-foreground">School Oversight</h1>
-        </div>
-        <p className="text-muted-foreground">
-          A read-only view of every course, professor, and integrity flag across the school.
-        </p>
-      </div>
+    <PageContainer width="wide" className="animate-in fade-in duration-300 space-y-6">
+      <PageHeader
+        title="School Oversight"
+        description="A read-only view of every course, professor, and integrity flag across the school."
+      />
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <Card>
           <CardContent className="pt-6 flex items-center gap-3">
-            <BookOpen className="w-8 h-8 text-primary" />
+            <BookOpen className="w-8 h-8 text-muted-foreground" />
             <div>
               <div className="text-2xl font-bold">{courses?.length ?? "—"}</div>
               <div className="text-xs text-muted-foreground">Courses</div>
@@ -152,7 +147,7 @@ export default function OversightPage() {
         </Card>
         <Card>
           <CardContent className="pt-6 flex items-center gap-3">
-            <GraduationCap className="w-8 h-8 text-primary" />
+            <GraduationCap className="w-8 h-8 text-muted-foreground" />
             <div>
               <div className="text-2xl font-bold">{professors?.length ?? "—"}</div>
               <div className="text-xs text-muted-foreground">Professors</div>
@@ -161,7 +156,7 @@ export default function OversightPage() {
         </Card>
         <Card>
           <CardContent className="pt-6 flex items-center gap-3">
-            <ShieldAlert className="w-8 h-8 text-destructive" />
+            <ShieldAlert className="w-8 h-8 text-danger" />
             <div>
               <div className="text-2xl font-bold">
                 {integrity ? integrity.reduce((sum, i) => sum + i.flaggedCount, 0) : "—"}
@@ -179,7 +174,7 @@ export default function OversightPage() {
         </CardHeader>
         <CardContent className="p-0">
           {coursesLoading ? (
-            <div className="flex justify-center py-10"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>
+            <div className="flex justify-center py-10"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>
           ) : !courses?.length ? (
             <div className="text-center py-10 text-muted-foreground">No courses yet.</div>
           ) : (
@@ -217,7 +212,7 @@ export default function OversightPage() {
           </CardHeader>
           <CardContent className="p-0">
             {profsLoading ? (
-              <div className="flex justify-center py-10"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>
+              <div className="flex justify-center py-10"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>
             ) : !professors?.length ? (
               <div className="text-center py-10 text-muted-foreground">No professors yet.</div>
             ) : (
@@ -232,7 +227,7 @@ export default function OversightPage() {
                       <span className="font-medium truncate">
                         {p.name ?? p.email}
                         {p.role === "course_coordinator" && (
-                          <Badge variant="outline" className="ml-2 align-middle text-sky-700 border-sky-300">
+                          <Badge variant="info" className="ml-2 align-middle">
                             Coordinator
                           </Badge>
                         )}
@@ -260,14 +255,14 @@ export default function OversightPage() {
           </CardHeader>
           <CardContent className="p-0">
             {integrityLoading ? (
-              <div className="flex justify-center py-10"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>
+              <div className="flex justify-center py-10"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>
             ) : !integrity?.length ? (
               <div className="text-center py-10 text-muted-foreground">No open integrity flags. 🎉</div>
             ) : (
               <ul className="divide-y">
                 {integrity.map((i) => (
                   <li key={i.courseId} className="flex items-center gap-3 px-4 py-3">
-                    <ShieldAlert className="w-4 h-4 text-destructive shrink-0" />
+                    <ShieldAlert className="w-4 h-4 text-danger shrink-0" />
                     <div className="flex flex-col overflow-hidden flex-1">
                       <span className="font-medium truncate">{i.courseTitle}</span>
                       <span className="text-xs text-muted-foreground truncate">
@@ -285,6 +280,6 @@ export default function OversightPage() {
       </div>
 
       <SendFeedbackDialog recipient={feedbackTo} onClose={() => setFeedbackTo(null)} />
-    </div>
+    </PageContainer>
   );
 }

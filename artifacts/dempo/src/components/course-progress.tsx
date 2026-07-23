@@ -107,7 +107,7 @@ export function CourseProgressView({ courseId }: { courseId: number }) {
                         </span>
                       )}
                       {sub.status === "graded" ? (
-                        <span className="text-sm font-medium text-green-700 bg-green-100 dark:text-green-400 dark:bg-green-950 px-2 py-1 rounded">
+                        <span className="text-sm font-medium text-success bg-success/10 px-2 py-1 rounded">
                           {sub.score ?? "—"}/{sub.maxScore ?? "—"}
                         </span>
                       ) : (
@@ -154,7 +154,7 @@ export function CourseProgressView({ courseId }: { courseId: number }) {
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
                       {q.resultsPublished && q.score != null ? (
-                        <span className="text-sm font-medium text-green-700 bg-green-100 dark:text-green-400 dark:bg-green-950 px-2 py-1 rounded">
+                        <span className="text-sm font-medium text-success bg-success/10 px-2 py-1 rounded">
                           {q.score}/{q.maxScore}
                         </span>
                       ) : (
@@ -176,7 +176,7 @@ export function CourseProgressView({ courseId }: { courseId: number }) {
 }
 
 const RANK_STYLES: Record<number, string> = {
-  1: "bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-400",
+  1: "bg-warning/15 text-warning",
   2: "bg-slate-200 text-slate-700 dark:bg-slate-800 dark:text-slate-300",
   3: "bg-orange-100 text-orange-700 dark:bg-orange-950 dark:text-orange-400",
 };
@@ -200,7 +200,7 @@ export function LeaderboardView({ courseId }: { courseId: number }) {
     <div className="max-w-3xl">
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-xl font-serif font-semibold flex items-center gap-2">
-          <Trophy className="w-5 h-5 text-amber-500" />
+          <Trophy className="w-5 h-5 text-warning" />
           Leaderboard
         </h2>
         {data.myRank != null && (

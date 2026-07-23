@@ -48,8 +48,9 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
+import { PageContainer, PageHeader } from "@/components/page";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Users, ShieldCheck, GraduationCap, UserPlus, X, UserMinus, BookOpen, Trash2 } from "lucide-react";
+import { Loader2, ShieldCheck, GraduationCap, UserPlus, X, UserMinus, BookOpen, Trash2 } from "lucide-react";
 
 const ROLES = [
   { value: "student", label: "Student" },
@@ -62,15 +63,15 @@ const ROLES = [
 function roleBadge(role: string) {
   switch (role) {
     case "teacher":
-      return <Badge className="bg-primary/10 text-primary hover:bg-primary/10">Professor</Badge>;
+      return <Badge variant="secondary">Professor</Badge>;
     case "dean":
-      return <Badge className="bg-amber-500/10 text-amber-700 dark:text-amber-400 hover:bg-amber-500/10">Dean</Badge>;
+      return <Badge variant="warning">Dean</Badge>;
     case "course_coordinator":
-      return <Badge className="bg-sky-500/10 text-sky-700 dark:text-sky-400 hover:bg-sky-500/10">Coordinator</Badge>;
+      return <Badge variant="info">Coordinator</Badge>;
     case "student":
-      return <Badge variant="secondary">Student</Badge>;
+      return <Badge variant="outline">Student</Badge>;
     default:
-      return <Badge variant="outline" className="text-muted-foreground">Unassigned</Badge>;
+      return <Badge variant="outline">Unassigned</Badge>;
   }
 }
 
@@ -252,19 +253,16 @@ export default function AdminUsersPage() {
   });
 
   return (
-    <div className="p-6 md:p-8 max-w-6xl mx-auto w-full">
-      <div className="flex items-center gap-3 mb-1">
-        <Users className="w-6 h-6 text-primary" />
-        <h1 className="text-3xl font-serif font-bold text-foreground">Users</h1>
-      </div>
-      <p className="text-muted-foreground mb-6">
-        Manage every account: change roles or grant and revoke admin access.
-      </p>
+    <PageContainer width="wide" className="animate-in fade-in duration-300">
+      <PageHeader
+        title="Users"
+        description="Manage every account: change roles or grant and revoke admin access."
+      />
 
       <Card className="mb-6">
         <CardHeader className="pb-3">
           <div className="flex items-center gap-2">
-            <GraduationCap className="w-4 h-4 text-primary" />
+            <GraduationCap className="w-4 h-4 text-muted-foreground" />
             <CardTitle className="text-base">Teachers</CardTitle>
           </div>
           <CardDescription>
@@ -369,7 +367,7 @@ export default function AdminUsersPage() {
         <CardContent className="p-0">
           {isLoading ? (
             <div className="flex justify-center py-16">
-              <Loader2 className="w-6 h-6 animate-spin text-primary" />
+              <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
             </div>
           ) : filtered.length === 0 ? (
             <div className="text-center py-16 text-muted-foreground">
@@ -394,7 +392,7 @@ export default function AdminUsersPage() {
                       updateUser.isPending && updateUser.variables?.id === u.id;
                     const isTeacher = u.role === "teacher";
                     return (
-                      <tr key={u.id} className="border-b last:border-b-0 hover:bg-muted/40">
+                      <tr key={u.id} className="border-b last:border-b-0 hover:bg-muted/50">
                         <td className="px-4 py-3">
                           <div className="flex items-center gap-3">
                             <Avatar className="w-8 h-8">
@@ -466,7 +464,7 @@ export default function AdminUsersPage() {
                                 updateUser.mutate({ id: u.id, data: { isAdmin: checked } })
                               }
                             />
-                            {u.isAdmin && <ShieldCheck className="w-4 h-4 text-primary" />}
+                            {u.isAdmin && <ShieldCheck className="w-4 h-4 text-muted-foreground" />}
                           </div>
                         </td>
                         <td className="px-4 py-3 whitespace-nowrap text-muted-foreground">
@@ -682,6 +680,6 @@ export default function AdminUsersPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
+    </PageContainer>
   );
 }

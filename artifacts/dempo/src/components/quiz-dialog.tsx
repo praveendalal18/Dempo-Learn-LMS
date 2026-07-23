@@ -240,7 +240,7 @@ export function QuizFormDialog({
                           className="shrink-0"
                         >
                           {q.correctOption === oi ? (
-                            <CheckCircle2 className="w-5 h-5 text-green-600" />
+                            <CheckCircle2 className="w-5 h-5 text-success" />
                           ) : (
                             <Circle className="w-5 h-5 text-muted-foreground" />
                           )}

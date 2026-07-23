@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useGetCalendar, getGetCalendarQueryKey } from "@workspace/api-client-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { PageContainer, PageHeader } from "@/components/page";
 import {
   format,
   startOfMonth,
@@ -136,32 +137,30 @@ export default function CalendarPage() {
     setCursor(view === "month" ? addMonths(cursor, 1) : addWeeks(cursor, 1));
 
   return (
-    <div className="p-4 md:p-8 max-w-7xl mx-auto w-full space-y-6 md:space-y-8 animate-in fade-in duration-500">
-      <header className="flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-serif font-bold text-foreground">Calendar</h1>
-          <p className="text-muted-foreground mt-1">
-            Class days, sessions, and assignment due dates across your courses.
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="flex rounded-md border overflow-hidden">
-            {(["month", "week"] as const).map((v) => (
-              <button
-                key={v}
-                type="button"
-                onClick={() => setView(v)}
-                className={`px-4 py-1.5 text-sm font-medium capitalize transition-colors ${view === v ? "bg-primary text-primary-foreground" : "bg-card text-muted-foreground hover:text-foreground"}`}
-              >
-                {v}
-              </button>
-            ))}
-          </div>
-          <Button variant="outline" size="sm" onClick={() => setCursor(new Date())}>
-            Today
-          </Button>
-        </div>
-      </header>
+    <PageContainer width="wide" className="animate-in fade-in duration-300">
+      <PageHeader
+        title="Calendar"
+        description="Class days, sessions, and assignment due dates across your courses."
+        actions={
+          <>
+            <div className="flex rounded-md border overflow-hidden">
+              {(["month", "week"] as const).map((v) => (
+                <button
+                  key={v}
+                  type="button"
+                  onClick={() => setView(v)}
+                  className={`px-4 py-1.5 text-sm font-medium capitalize transition-colors ${view === v ? "bg-primary text-primary-foreground" : "bg-card text-muted-foreground hover:text-foreground"}`}
+                >
+                  {v}
+                </button>
+              ))}
+            </div>
+            <Button variant="outline" size="sm" onClick={() => setCursor(new Date())}>
+              Today
+            </Button>
+          </>
+        }
+      />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2">
@@ -211,7 +210,7 @@ export default function CalendarPage() {
                             <Link
                               key={e.key}
                               href={e.link!}
-                              className="block text-[11px] leading-tight px-1.5 py-1 rounded truncate bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/20 transition-colors"
+                              className="block text-[11px] leading-tight px-1.5 py-1 rounded truncate bg-success/12 text-success border border-success/25 hover:bg-success/20 transition-colors"
                               title={`${e.title} — ${e.courseTitle}`}
                             >
                               <GraduationCap className="w-3 h-3 inline mr-0.5 -mt-px" />
@@ -267,7 +266,7 @@ export default function CalendarPage() {
                         <div className="space-y-1.5">
                           {dayEvents.map((e) =>
                             e.kind === "plan" ? (
-                              <Link key={e.key} href={e.link!} className="block text-sm px-3 py-2 rounded-lg bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30">
+                              <Link key={e.key} href={e.link!} className="block text-sm px-3 py-2 rounded-lg bg-success/12 text-success border border-success/25">
                                 <GraduationCap className="w-3.5 h-3.5 inline mr-1 -mt-px" /> {e.title}{" "}
                                 <span className="text-muted-foreground">· {e.courseTitle}</span>
                               </Link>
@@ -299,7 +298,7 @@ export default function CalendarPage() {
                   Assignment due
                 </span>
                 <span className="flex items-center gap-1.5">
-                  <span className="w-3 h-3 rounded bg-emerald-500/10 border border-emerald-500/30"></span>
+                  <span className="w-3 h-3 rounded bg-success/12 border border-success/25"></span>
                   Class day (plan)
                 </span>
               </div>
@@ -360,6 +359,6 @@ export default function CalendarPage() {
           </div>
         </div>
       </div>
-    </div>
+    </PageContainer>
   );
 }

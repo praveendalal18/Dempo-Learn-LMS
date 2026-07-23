@@ -43,7 +43,7 @@ export default function AssignmentViewPage({ id }: { id: string }) {
           <div className="flex flex-col md:flex-row justify-between gap-6">
             <div className="flex-1">
               <div className="flex items-start justify-between gap-4">
-                <h1 className="text-3xl font-serif font-bold text-foreground mb-4">{assignment.title}</h1>
+                <h1 className="text-2xl font-semibold tracking-tight text-foreground mb-4">{assignment.title}</h1>
                 {isTeacher && (
                   <>
                     <Button variant="outline" size="sm" className="shrink-0" onClick={() => setEditOpen(true)}>
@@ -131,7 +131,7 @@ export default function AssignmentViewPage({ id }: { id: string }) {
                 {!isTeacher && assignment.mySubmissionStatus && (
                   <div className="pt-2 border-t border-border/50">
                     <div className="text-xs uppercase font-bold text-muted-foreground tracking-wider mb-1">Status</div>
-                    <div className={`font-semibold ${assignment.mySubmissionStatus === 'graded' ? 'text-green-600 dark:text-green-400' : 'text-accent'}`}>
+                    <div className={`font-semibold ${assignment.mySubmissionStatus === 'graded' ? 'text-success' : 'text-info'}`}>
                       {assignment.mySubmissionStatus === 'graded' ? 'Graded' : 'Submitted for Review'}
                     </div>
                   </div>
@@ -167,9 +167,9 @@ export default function AssignmentViewPage({ id }: { id: string }) {
 
 export function AiDeclarationBadge({ declaration, className = "" }: { declaration?: string | null; className?: string }) {
   const map: Record<string, { label: string; cls: string }> = {
-    none: { label: "No AI", cls: "bg-green-50 text-green-700 border-green-200 dark:bg-green-950/50 dark:text-green-400 dark:border-green-900" },
-    assisted: { label: "AI-assisted", cls: "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/50 dark:text-blue-400 dark:border-blue-900" },
-    generated: { label: "Mostly AI", cls: "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/50 dark:text-amber-400 dark:border-amber-900" },
+    none: { label: "No AI", cls: "bg-success/10 text-success border-success/20" },
+    assisted: { label: "AI-assisted", cls: "bg-info/10 text-info border-info/20" },
+    generated: { label: "Mostly AI", cls: "bg-warning/12 text-warning border-warning/25" },
   };
   const entry = declaration ? map[declaration] : undefined;
   const { label, cls } = entry ?? { label: "Not declared", cls: "bg-muted text-muted-foreground border-border" };
@@ -179,8 +179,8 @@ export function AiDeclarationBadge({ declaration, className = "" }: { declaratio
 export function SimilarityBadge({ score }: { score?: number | null }) {
   if (score == null) return <span className="text-muted-foreground">—</span>;
   const cls = score >= 70
-    ? "bg-red-50 text-red-700 border-red-200 dark:bg-red-950/50 dark:text-red-400 dark:border-red-900"
-    : "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/50 dark:text-amber-400 dark:border-amber-900";
+    ? "bg-danger/10 text-danger border-danger/20"
+    : "bg-warning/12 text-warning border-warning/25";
   return (
     <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold border ${cls}`}>
       <Copy className="w-3 h-3" /> {Math.round(score)}%
@@ -210,7 +210,7 @@ function TeacherSubmissionsView({ assignmentId }: { assignmentId: number }) {
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <h2 className="text-2xl font-serif font-bold">Submissions Queue</h2>
+        <h2 className="text-2xl font-semibold tracking-tight">Submissions Queue</h2>
         {submissions && submissions.length > 1 && (
           <Button variant="outline" size="sm" onClick={handleRerun} disabled={rerunMutation.isPending}>
             {rerunMutation.isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <RefreshCw className="w-4 h-4 mr-2" />}
@@ -249,11 +249,11 @@ function TeacherSubmissionsView({ assignmentId }: { assignmentId: number }) {
                   <td className="px-6 py-4 text-muted-foreground">{format(new Date(sub.submittedAt), 'MMM d, h:mm a')}</td>
                   <td className="px-6 py-4">
                     {sub.status === 'graded' ? (
-                      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-50 text-green-700 border border-green-200 dark:bg-green-950/50 dark:text-green-400 dark:border-green-900">
+                      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-success/10 text-success border border-success/20">
                         {sub.score}/{sub.maxScore}
                       </span>
                     ) : (
-                      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-accent/10 text-accent border border-accent/20">
+                      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-warning/12 text-warning border border-warning/25">
                         Needs Grading
                       </span>
                     )}
@@ -352,10 +352,10 @@ function StudentSubmissionForm({ assignment, viewerId }: { assignment: any; view
 
   if (isSubmitted) {
     return (
-      <Card className="border-green-200 bg-green-50/30 dark:border-green-900 dark:bg-green-950/30">
+      <Card className="border-success/20 bg-success/10">
         <CardContent className="p-8 flex flex-col items-center text-center">
-          <CheckCircle className="w-12 h-12 text-green-500 mb-4" />
-          <h2 className="text-2xl font-serif font-bold text-foreground mb-2">
+          <CheckCircle className="w-12 h-12 text-success mb-4" />
+          <h2 className="text-2xl font-semibold tracking-tight text-foreground mb-2">
             {isGroup ? "Group Work Submitted" : "Work Submitted"}
           </h2>
           <p className="text-muted-foreground max-w-md mb-6">
@@ -395,9 +395,9 @@ function StudentSubmissionForm({ assignment, viewerId }: { assignment: any; view
   }
 
   return (
-    <Card className="shadow-md overflow-hidden border-primary/20">
-      <div className="bg-primary/5 px-6 py-4 border-b">
-        <h2 className="text-xl font-serif font-semibold">{isGroup ? "Your Group's Work" : "Your Work"}</h2>
+    <Card className="shadow-sm overflow-hidden">
+      <div className="bg-muted/30 px-6 py-4 border-b">
+        <h2 className="text-xl font-semibold">{isGroup ? "Your Group's Work" : "Your Work"}</h2>
         {isGroup && (
           <p className="text-sm text-muted-foreground mt-1">
             One shared submission for {assignment.myGroup?.name} — the grade will apply to every member.

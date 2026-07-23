@@ -56,14 +56,14 @@ export default function QuizViewPage({ id }: { id: string }) {
         <div className="flex flex-col md:flex-row justify-between gap-6">
           <div className="flex-1">
             <div className="flex items-center gap-3 mb-3">
-              <h1 className="text-3xl font-serif font-bold text-foreground">{quiz.title}</h1>
+              <h1 className="text-2xl font-semibold tracking-tight text-foreground">{quiz.title}</h1>
               {isTeacher && (
-                <span className={`px-2.5 py-1 text-xs font-semibold rounded-full uppercase tracking-wider ${quiz.status === "published" ? "bg-green-100 text-green-700 dark:bg-green-950/50 dark:text-green-400" : "bg-amber-100 text-amber-700 dark:bg-amber-950/50 dark:text-amber-400"}`}>
+                <span className={`px-2.5 py-1 text-xs font-semibold rounded-full uppercase tracking-wider ${quiz.status === "published" ? "bg-success/10 text-success" : "bg-warning/12 text-warning"}`}>
                   {quiz.status === "published" ? "Published" : "Draft"}
                 </span>
               )}
               {quiz.resultsPublishedAt && (
-                <span className="px-2.5 py-1 text-xs font-semibold rounded-full uppercase tracking-wider bg-primary/10 text-primary">
+                <span className="px-2.5 py-1 text-xs font-semibold rounded-full uppercase tracking-wider bg-info/10 text-info">
                   Results Out
                 </span>
               )}
@@ -224,7 +224,7 @@ function TeacherResults({ quiz }: { quiz: any }) {
   return (
     <div className="space-y-8">
       <section>
-        <h2 className="text-2xl font-serif font-bold mb-4">Questions</h2>
+        <h2 className="text-2xl font-semibold tracking-tight mb-4">Questions</h2>
         <Card className="shadow-sm">
           <CardContent className="p-0 divide-y">
             {questionStats.map(({ question: q, pct }: any, i: number) => (
@@ -250,8 +250,8 @@ function TeacherResults({ quiz }: { quiz: any }) {
       </section>
 
       <section>
-        <h2 className="text-2xl font-serif font-bold mb-4">
-          Attempts <span className="text-muted-foreground font-sans text-base font-normal">({attemptList.length})</span>
+        <h2 className="text-2xl font-semibold tracking-tight mb-4">
+          Attempts <span className="text-muted-foreground text-base font-normal">({attemptList.length})</span>
         </h2>
         {attemptList.length === 0 ? (
           <Card className="border-dashed">
@@ -320,7 +320,7 @@ function AttemptRow({ attempt, quiz, questions }: { attempt: any; quiz: any; que
               Submitted {format(new Date(attempt.submittedAt), "MMM d, h:mm a")}
             </div>
           </div>
-          <span className={`px-2 py-1 rounded-full text-xs font-medium border ${attempt.status === "graded" ? "bg-green-50 text-green-700 border-green-200 dark:bg-green-950/50 dark:text-green-400 dark:border-green-900" : "bg-accent/10 text-accent border-accent/20"}`}>
+          <span className={`px-2 py-1 rounded-full text-xs font-medium border ${attempt.status === "graded" ? "bg-success/10 text-success border-success/20" : "bg-warning/12 text-warning border-warning/25"}`}>
             {attempt.status === "graded" ? "Final" : "Provisional"}
           </span>
           <span className="text-lg font-bold shrink-0">{total}/{attempt.maxScore}</span>
@@ -339,7 +339,7 @@ function AttemptRow({ attempt, quiz, questions }: { attempt: any; quiz: any; que
                   {q.type === "multiple_choice" ? (
                     <div className="text-sm flex items-center gap-2">
                       {ans.selectedOption != null && ans.selectedOption === q.correctOption ? (
-                        <CheckCircle2 className="w-4 h-4 text-green-600 shrink-0" />
+                        <CheckCircle2 className="w-4 h-4 text-success shrink-0" />
                       ) : (
                         <XCircle className="w-4 h-4 text-destructive shrink-0" />
                       )}
@@ -395,10 +395,10 @@ function StudentQuizBody({ quiz }: { quiz: any }) {
     return quiz.resultsPublishedAt ? (
       <StudentResults quiz={quiz} />
     ) : (
-      <Card className="border-green-200 bg-green-50/30 dark:border-green-900 dark:bg-green-950/30">
+      <Card className="border-success/20 bg-success/10">
         <CardContent className="p-8 flex flex-col items-center text-center">
-          <CheckCircle className="w-12 h-12 text-green-500 mb-4" />
-          <h2 className="text-2xl font-serif font-bold text-foreground mb-2">Quiz Submitted</h2>
+          <CheckCircle className="w-12 h-12 text-success mb-4" />
+          <h2 className="text-2xl font-semibold tracking-tight text-foreground mb-2">Quiz Submitted</h2>
           <p className="text-muted-foreground max-w-md">
             Your answers are in. Your score and the correct answers will appear here once your teacher publishes the results.
           </p>
@@ -517,16 +517,16 @@ function StudentResults({ quiz }: { quiz: any }) {
 
   return (
     <div className="space-y-6">
-      <Card className="shadow-sm border-primary/20">
+      <Card className="shadow-sm">
         <CardContent className="p-8 flex flex-col sm:flex-row items-center justify-between gap-4">
           <div>
-            <h2 className="text-2xl font-serif font-bold mb-1">Your Result</h2>
+            <h2 className="text-2xl font-semibold tracking-tight mb-1">Your Result</h2>
             <p className="text-muted-foreground text-sm">
               Submitted {format(new Date(attempt.submittedAt), "PPP p")}
             </p>
           </div>
           <div className="text-center">
-            <div className="text-5xl font-bold text-primary">
+            <div className="text-5xl font-bold text-foreground">
               {attempt.score ?? 0}<span className="text-2xl text-muted-foreground">/{attempt.maxScore}</span>
             </div>
             <div className="text-xs uppercase font-bold text-muted-foreground tracking-wider mt-1">Final Score</div>
@@ -544,7 +544,7 @@ function StudentResults({ quiz }: { quiz: any }) {
               <CardContent className="p-6 space-y-3">
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex items-start gap-3">
-                    <span className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 ${full ? "bg-green-100 text-green-700 dark:bg-green-950 dark:text-green-400" : score > 0 ? "bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-400" : "bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-400"}`}>
+                    <span className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 ${full ? "bg-success/10 text-success" : score > 0 ? "bg-warning/12 text-warning" : "bg-danger/10 text-danger"}`}>
                       {full ? <CheckCircle2 className="w-4 h-4" /> : <XCircle className="w-4 h-4" />}
                     </span>
                     <div className="font-medium">{i + 1}. {q.prompt}</div>
@@ -558,8 +558,8 @@ function StudentResults({ quiz }: { quiz: any }) {
                       const isCorrect = oi === q.correctOption;
                       const isMine = ans?.selectedOption === oi;
                       return (
-                        <div key={oi} className={`flex items-center gap-2 p-2 rounded-lg border ${isCorrect ? "border-green-300 bg-green-50 dark:border-green-900 dark:bg-green-950/40" : isMine ? "border-red-300 bg-red-50 dark:border-red-900 dark:bg-red-950/40" : "border-transparent"}`}>
-                          {isCorrect ? <CheckCircle2 className="w-4 h-4 text-green-600 shrink-0" /> : isMine ? <XCircle className="w-4 h-4 text-destructive shrink-0" /> : <Circle className="w-4 h-4 text-muted-foreground/40 shrink-0" />}
+                        <div key={oi} className={`flex items-center gap-2 p-2 rounded-lg border ${isCorrect ? "border-success/30 bg-success/10" : isMine ? "border-danger/20 bg-danger/10" : "border-transparent"}`}>
+                          {isCorrect ? <CheckCircle2 className="w-4 h-4 text-success shrink-0" /> : isMine ? <XCircle className="w-4 h-4 text-destructive shrink-0" /> : <Circle className="w-4 h-4 text-muted-foreground/40 shrink-0" />}
                           <span>{opt}</span>
                           {isMine && <span className="ml-auto text-xs font-medium text-muted-foreground">Your answer</span>}
                         </div>

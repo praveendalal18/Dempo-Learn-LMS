@@ -36,20 +36,20 @@ export function ClerkAuthProvider({ children }: { children: React.ReactNode }) {
       proxyUrl={clerkProxyUrl}
       appearance={{
         variables: {
-          // Brand violet — matches the violet/fuchsia gradient palette
-          colorPrimary: 'hsl(271 81% 56%)',
+          // Notion-neutral: near-black actions, restrained blue links.
+          colorPrimary: 'hsl(40 8% 18%)',
           colorBackground: 'hsl(0 0% 100%)',
-          fontFamily: "'Outfit', sans-serif",
-          borderRadius: '0.75rem',
+          fontFamily: "'Inter', ui-sans-serif, system-ui, sans-serif",
+          borderRadius: '0.5rem',
         },
         elements: {
-          card: "shadow-lg border border-border",
-          headerTitle: "font-serif text-2xl text-foreground",
+          card: "shadow-sm border border-border",
+          headerTitle: "text-xl font-semibold text-foreground",
           headerSubtitle: "text-muted-foreground",
           formButtonPrimary:
-            "bg-gradient-to-r from-violet-600 to-fuchsia-500 hover:from-violet-500 hover:to-fuchsia-400 text-white font-medium border-0 shadow-md",
+            "bg-primary text-primary-foreground hover:bg-primary/90 font-medium border-0 shadow-none normal-case",
           footerActionLink:
-            "text-fuchsia-600 hover:text-fuchsia-500 dark:text-fuchsia-400 dark:hover:text-fuchsia-300 font-semibold",
+            "text-info hover:text-info/80 font-medium",
         }
       }}
       localization={{

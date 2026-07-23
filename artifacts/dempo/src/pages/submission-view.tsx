@@ -46,7 +46,7 @@ export default function SubmissionViewPage({ id }: { id: string }) {
               <AvatarFallback className="text-lg"><UserCircle className="w-6 h-6 text-muted-foreground" /></AvatarFallback>
             </Avatar>
             <div className="min-w-0">
-              <h2 className="text-xl font-bold font-serif flex items-center gap-2">
+              <h2 className="text-xl font-semibold flex items-center gap-2">
                 {submission.groupName && <UsersIcon className="w-5 h-5 text-primary" />}
                 {submission.groupName || submission.studentName}
               </h2>
@@ -62,7 +62,7 @@ export default function SubmissionViewPage({ id }: { id: string }) {
             {submission.status === 'graded' && (
               <div className="ml-auto flex flex-col items-end">
                 <span className="text-xs uppercase font-bold tracking-wider text-muted-foreground mb-1">Final Score</span>
-                <span className="text-2xl font-bold text-green-600 dark:text-green-400">{submission.score}<span className="text-sm text-muted-foreground">/{submission.maxScore}</span></span>
+                <span className="text-2xl font-bold text-success">{submission.score}<span className="text-sm text-muted-foreground">/{submission.maxScore}</span></span>
               </div>
             )}
           </div>
@@ -88,7 +88,7 @@ export default function SubmissionViewPage({ id }: { id: string }) {
 
           <Card className="flex-1 shadow-sm overflow-hidden flex flex-col">
             <CardHeader className="bg-muted/30 border-b py-4">
-              <CardTitle className="text-lg font-serif">Submission Content</CardTitle>
+              <CardTitle className="text-lg font-semibold">Submission Content</CardTitle>
             </CardHeader>
             <CardContent className="p-0 flex-1 relative min-h-[400px]">
               {submission.textResponse && (
@@ -134,23 +134,23 @@ export default function SubmissionViewPage({ id }: { id: string }) {
         {/* Right: Grading & AI */}
         <div className="space-y-6">
           {/* AI Intelligence Panel */}
-          <Card className="border-indigo-100 shadow-sm overflow-hidden bg-gradient-to-b from-indigo-50/50 to-white dark:from-indigo-950/20 dark:to-card">
+          <Card className="shadow-sm overflow-hidden">
             <CardHeader className="pb-4">
               <div className="flex items-center gap-2 mb-2">
-                <Sparkles className="w-4 h-4 text-indigo-500" />
-                <span className="text-xs uppercase font-bold tracking-widest text-indigo-600 dark:text-indigo-400">Dempo Learn AI Analysis</span>
+                <Sparkles className="w-4 h-4 text-muted-foreground" />
+                <span className="text-xs uppercase font-bold tracking-widest text-muted-foreground">Dempo Learn AI Analysis</span>
               </div>
-              <CardTitle className="font-serif text-lg">Draft Assessment</CardTitle>
+              <CardTitle className="text-lg font-semibold">Draft Assessment</CardTitle>
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="grid grid-cols-2 gap-4">
-                <div className="bg-white dark:bg-card p-4 rounded-lg border shadow-sm flex flex-col items-center text-center">
+                <div className="bg-muted/30 p-4 rounded-lg border flex flex-col items-center text-center">
                   <span className="text-xs uppercase font-semibold text-muted-foreground mb-1 tracking-wider">Suggested</span>
                   <div className="text-3xl font-bold text-foreground">{submission.aiScore || '-'}<span className="text-sm font-normal text-muted-foreground">/{submission.maxScore}</span></div>
                 </div>
-                <div className="bg-white dark:bg-card p-4 rounded-lg border shadow-sm flex flex-col items-center text-center">
+                <div className="bg-muted/30 p-4 rounded-lg border flex flex-col items-center text-center">
                   <span className="text-xs uppercase font-semibold text-muted-foreground mb-1 tracking-wider">Originality</span>
-                  <div className={`text-3xl font-bold ${submission.plagiarismScore && submission.plagiarismScore > 30 ? 'text-destructive' : 'text-green-600 dark:text-green-400'}`}>
+                  <div className={`text-3xl font-bold ${submission.plagiarismScore && submission.plagiarismScore > 30 ? 'text-danger' : 'text-success'}`}>
                     {submission.plagiarismScore || 0}%
                   </div>
                 </div>
@@ -160,7 +160,7 @@ export default function SubmissionViewPage({ id }: { id: string }) {
                 <h4 className="text-sm font-semibold mb-2 flex items-center gap-2">
                   <FileText className="w-4 h-4 text-muted-foreground" /> Suggested Feedback
                 </h4>
-                <div className="text-sm text-muted-foreground leading-relaxed bg-white dark:bg-card p-4 rounded-lg border">
+                <div className="text-sm text-muted-foreground leading-relaxed bg-muted/30 p-4 rounded-lg border">
                   {submission.aiFeedback ? submission.aiFeedback : "AI analysis pending or unavailable."}
                 </div>
               </div>
@@ -169,11 +169,11 @@ export default function SubmissionViewPage({ id }: { id: string }) {
 
           {/* Similarity matches — teacher only */}
           {isTeacher && submission.similarityMatches && submission.similarityMatches.length > 0 && (
-            <Card className="border-red-200 dark:border-red-900 shadow-sm">
+            <Card className="border-danger/20 shadow-sm">
               <CardHeader className="pb-3">
                 <div className="flex items-center gap-2">
-                  <AlertTriangle className="w-4 h-4 text-red-500" />
-                  <CardTitle className="font-serif text-lg">Similar Submissions</CardTitle>
+                  <AlertTriangle className="w-4 h-4 text-danger" />
+                  <CardTitle className="text-lg font-semibold">Similar Submissions</CardTitle>
                 </div>
                 <p className="text-xs text-muted-foreground mt-1">
                   This work closely matches {submission.similarityMatches.length} other submission{submission.similarityMatches.length === 1 ? '' : 's'} in this assignment.
@@ -214,7 +214,7 @@ export default function SubmissionViewPage({ id }: { id: string }) {
           ) : (
             <Card className="shadow-sm">
               <CardHeader>
-                <CardTitle className="font-serif">Professor Feedback</CardTitle>
+                <CardTitle className="font-semibold">Professor Feedback</CardTitle>
               </CardHeader>
               <CardContent>
                 {submission.status === 'graded' ? (
@@ -244,7 +244,7 @@ function HighlightedText({ text, ranges }: { text: string; ranges: { start: numb
   ranges.forEach((r, i) => {
     if (r.start > cursor) parts.push(<span key={`t${i}`}>{text.slice(cursor, r.start)}</span>);
     parts.push(
-      <mark key={`m${i}`} className="bg-amber-200 dark:bg-amber-500/30 text-foreground rounded-sm px-0.5">
+      <mark key={`m${i}`} className="bg-warning/25 text-foreground rounded-sm px-0.5">
         {text.slice(r.start, r.end)}
       </mark>
     );
@@ -275,7 +275,7 @@ function ComparisonDialog({ submissionId, otherSubmissionId, leftName, rightName
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-6xl w-[95vw] max-h-[85vh] flex flex-col">
           <DialogHeader>
-            <DialogTitle className="font-serif">Side-by-side comparison</DialogTitle>
+            <DialogTitle className="font-semibold">Side-by-side comparison</DialogTitle>
             <DialogDescription>
               Matched passages are highlighted in both texts.
               {comparison && <span className="ml-1 font-semibold text-foreground">{comparison.score}% similar.</span>}
@@ -343,10 +343,10 @@ function GradingPanel({ submission }: { submission: any }) {
 
   return (
     <form onSubmit={handleGrade}>
-      <Card className="shadow-md border-primary/20 bg-primary/5">
+      <Card className="shadow-sm">
         <CardHeader className="pb-4 border-b bg-background/50 backdrop-blur">
           <div className="flex justify-between items-center">
-            <CardTitle className="font-serif">Official Evaluation</CardTitle>
+            <CardTitle className="font-semibold">Official Evaluation</CardTitle>
             <Button type="button" variant="outline" size="sm" onClick={applyAIFeedback} className="h-8 text-xs font-medium">
               <Sparkles className="w-3 h-3 mr-1.5" /> Use AI Draft
             </Button>

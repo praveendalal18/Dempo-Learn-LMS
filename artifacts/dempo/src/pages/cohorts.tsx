@@ -28,6 +28,7 @@ import {
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
+import { PageContainer, PageHeader } from "@/components/page";
 import { Users, Plus, Loader2, Pencil, Trash2, ArrowLeft, Mail, UserPlus, X } from "lucide-react";
 
 const COHORT_TYPES = [
@@ -57,13 +58,13 @@ export default function CohortsPage() {
   }
 
   return (
-    <div className="p-4 md:p-8 max-w-6xl mx-auto w-full animate-in fade-in slide-in-from-bottom-4 duration-500">
+    <PageContainer width="wide" className="animate-in fade-in duration-300">
       {selectedId === null ? (
         <CohortList onOpen={setSelectedId} />
       ) : (
         <CohortDetail cohortId={selectedId} onBack={() => setSelectedId(null)} />
       )}
-    </div>
+    </PageContainer>
   );
 }
 
@@ -76,17 +77,15 @@ function CohortList({ onOpen }: { onOpen: (id: number) => void }) {
 
   return (
     <>
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
-        <div>
-          <h1 className="text-3xl font-serif font-bold text-foreground">Cohorts</h1>
-          <p className="text-muted-foreground mt-1">
-            Group your students by year, course, subject, or anything else — then invite a whole cohort to a course at once.
-          </p>
-        </div>
-        <CohortFormDialog
-          trigger={<Button><Plus className="w-4 h-4 mr-2" /> New Cohort</Button>}
-        />
-      </div>
+      <PageHeader
+        title="Cohorts"
+        description="Group your students by year, course, subject, or anything else — then invite a whole cohort to a course at once."
+        actions={
+          <CohortFormDialog
+            trigger={<Button><Plus className="w-4 h-4 mr-2" /> New Cohort</Button>}
+          />
+        }
+      />
 
       <div className="flex items-center gap-3 mb-6">
         <Label className="text-sm text-muted-foreground">Filter by type</Label>
@@ -110,14 +109,14 @@ function CohortList({ onOpen }: { onOpen: (id: number) => void }) {
           {cohorts.map((cohort) => (
             <Card
               key={cohort.id}
-              className="flex flex-col hover:border-primary transition-all hover:shadow-md group cursor-pointer"
+              className="flex flex-col hover:border-foreground/20 transition-all hover:shadow-sm cursor-pointer"
               onClick={() => onOpen(cohort.id)}
             >
               <CardHeader className="pb-4">
                 <div className="flex justify-between items-start mb-2">
                   <Badge variant="secondary" className="capitalize">{typeLabel(cohort.type)}</Badge>
                 </div>
-                <CardTitle className="font-serif text-xl line-clamp-1 group-hover:text-primary transition-colors">
+                <CardTitle className="text-xl line-clamp-1">
                   {cohort.name}
                 </CardTitle>
                 <CardDescription className="line-clamp-2 mt-2 min-h-[40px]">
@@ -199,7 +198,7 @@ function CohortFormDialog({
       <DialogTrigger asChild>{trigger}</DialogTrigger>
       <DialogContent className="sm:max-w-[425px]" onClick={(e) => e.stopPropagation()}>
         <DialogHeader>
-          <DialogTitle className="font-serif">{isEdit ? "Edit cohort" : "Create a cohort"}</DialogTitle>
+          <DialogTitle>{isEdit ? "Edit cohort" : "Create a cohort"}</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4 pt-4">
           <div className="space-y-2">
@@ -350,43 +349,46 @@ function CohortDetail({ cohortId, onBack }: { cohortId: number; onBack: () => vo
         <Button variant="ghost" size="sm" onClick={onBack} className="mb-4 -ml-2">
           <ArrowLeft className="w-4 h-4 mr-2" /> All Cohorts
         </Button>
-        <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
-          <div>
-            <div className="flex items-center gap-3 mb-1">
-              <h1 className="text-3xl font-serif font-bold text-foreground">{cohort?.name ?? "Cohort"}</h1>
+        <PageHeader
+          className="mb-0"
+          title={
+            <span className="flex items-center gap-3">
+              {cohort?.name ?? "Cohort"}
               {cohort && <Badge variant="secondary" className="capitalize">{typeLabel(cohort.type)}</Badge>}
-            </div>
-            {cohort?.description && <p className="text-muted-foreground">{cohort.description}</p>}
-          </div>
-          <div className="flex gap-2">
-            {cohort && (
-              <CohortFormDialog
-                cohort={cohort}
-                trigger={<Button variant="outline" size="sm"><Pencil className="w-4 h-4 mr-2" /> Edit</Button>}
-              />
-            )}
-            <Button variant="outline" size="sm" className="text-destructive hover:text-destructive" onClick={() => setConfirmDelete(true)}>
-              <Trash2 className="w-4 h-4 mr-2" /> Delete
-            </Button>
-          </div>
-        </div>
+            </span>
+          }
+          description={cohort?.description || undefined}
+          actions={
+            <>
+              {cohort && (
+                <CohortFormDialog
+                  cohort={cohort}
+                  trigger={<Button variant="outline" size="sm"><Pencil className="w-4 h-4 mr-2" /> Edit</Button>}
+                />
+              )}
+              <Button variant="outline" size="sm" className="text-destructive hover:text-destructive" onClick={() => setConfirmDelete(true)}>
+                <Trash2 className="w-4 h-4 mr-2" /> Delete
+              </Button>
+            </>
+          }
+        />
       </div>
 
       <div className="grid md:grid-cols-3 gap-8">
         <div className="md:col-span-2">
-          <h2 className="text-xl font-serif font-semibold mb-4">
+          <h2 className="text-xl font-semibold mb-4">
             Members ({members?.length ?? 0})
           </h2>
           <Card className="shadow-sm">
             <CardContent className="p-0 divide-y">
               {isLoading ? (
-                <div className="p-12 text-center"><Loader2 className="w-6 h-6 animate-spin mx-auto text-primary" /></div>
+                <div className="p-12 text-center"><Loader2 className="w-6 h-6 animate-spin mx-auto text-muted-foreground" /></div>
               ) : members && members.length > 0 ? (
                 members.map((student) => (
                   <div key={student.id} className="flex items-center gap-3 p-4">
                     <Avatar className="w-9 h-9 border">
                       {student.avatarUrl && <AvatarImage src={student.avatarUrl} />}
-                      <AvatarFallback className="bg-primary/5">
+                      <AvatarFallback className="bg-muted">
                         {(student.name || student.email).charAt(0).toUpperCase()}
                       </AvatarFallback>
                     </Avatar>
@@ -415,7 +417,7 @@ function CohortDetail({ cohortId, onBack }: { cohortId: number; onBack: () => vo
 
         <div className="space-y-6">
           <div>
-            <h2 className="text-xl font-serif font-semibold mb-4">Add Students</h2>
+            <h2 className="text-xl font-semibold mb-4">Add Students</h2>
             <Card className="shadow-sm">
               <CardContent className="p-6 space-y-6">
                 <div className="space-y-2">
