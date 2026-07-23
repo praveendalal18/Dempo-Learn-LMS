@@ -311,6 +311,7 @@ function TeacherPlanEditor({ courseId, plan, extras }: { courseId: number; plan:
   const [hourFiles, setHourFiles] = useState<Map<number, PlanFile[]>>(new Map());
   const [uploadingHour, setUploadingHour] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
+  const [savingSession, setSavingSession] = useState<number | null>(null);
   const [dirty, setDirty] = useState(false);
 
   // Schedule auto-fill inputs
@@ -536,6 +537,43 @@ function TeacherPlanEditor({ courseId, plan, extras }: { courseId: number; plan:
     }
   };
 
+  // Save just one session in place (session mode). Legacy multi-hour days fall
+  // back to the full plan save.
+  const saveSession = async (day: number) => {
+    if (hoursPerDay !== 1) { await handleSave(); return; }
+    const hour = day;
+    const draft = drafts.get(hour);
+    if (!draft || !draft.title.trim()) {
+      toast({ title: "Add a topic first", description: "Give this session a title before saving.", variant: "destructive" });
+      return;
+    }
+    setSavingSession(day);
+    try {
+      const dayTime = dayTimes[String(day)];
+      await api(`/courses/${courseId}/plan/session/${hour}`, {
+        method: "PUT",
+        body: JSON.stringify({
+          title: draft.title.trim(),
+          description: draft.description.trim() || null,
+          preWork: draft.preWork.trim() || null,
+          caseStudy: draft.caseStudy.trim() || null,
+          postWork: draft.postWork.trim() || null,
+          date: dayDates[String(day)] || null,
+          time: dayTime && dayTime !== startTime ? dayTime : null,
+          links: (hourLinks.get(hour) || "").split(/\r?\n/).map(s => s.trim()).filter(Boolean),
+          attachments: hourFiles.get(hour) || [],
+        }),
+      });
+      toast({ title: `${unit} ${day} saved` });
+      queryClient.invalidateQueries({ queryKey: getGetCoursePlanQueryKey(courseId) });
+      queryClient.invalidateQueries({ queryKey: planExtrasKey(courseId) });
+    } catch (err: any) {
+      toast({ title: "Couldn't save session", description: err?.message || "Please try again.", variant: "destructive" });
+    } finally {
+      setSavingSession(null);
+    }
+  };
+
   const filledHours = useMemo(
     () => Array.from(drafts.values()).filter(d => d.hourNumber <= totalHours && d.title.trim()).length,
     [drafts, totalHours],
@@ -685,14 +723,27 @@ function TeacherPlanEditor({ courseId, plan, extras }: { courseId: number; plan:
                   />
                 </div>
               </div>
-              <button
-                type="button"
-                onClick={() => toggleDayLock(day)}
-                className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border transition-colors ${locked ? "bg-muted text-muted-foreground border-transparent hover:bg-muted/70" : "bg-success/10 text-success border-success/20 hover:bg-success/15"}`}
-                title={locked ? "Locked — students see the title only. Click to reveal." : "Visible — students see full details. Click to lock."}
-              >
-                {locked ? <><EyeOff className="w-3.5 h-3.5" /> Title only</> : <><Eye className="w-3.5 h-3.5" /> Visible</>}
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => toggleDayLock(day)}
+                  className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border transition-colors ${locked ? "bg-muted text-muted-foreground border-transparent hover:bg-muted/70" : "bg-success/10 text-success border-success/20 hover:bg-success/15"}`}
+                  title={locked ? "Locked — students see the title only. Click to reveal." : "Visible — students see full details. Click to lock."}
+                >
+                  {locked ? <><EyeOff className="w-3.5 h-3.5" /> Title only</> : <><Eye className="w-3.5 h-3.5" /> Visible</>}
+                </button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() => saveSession(day)}
+                  disabled={savingSession === day || saving}
+                  title={`Save ${unit} ${day} on its own`}
+                >
+                  {savingSession === day ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> : <Save className="w-3.5 h-3.5 mr-1.5" />}
+                  Save
+                </Button>
+              </div>
             </div>
             <CardContent className="p-0 divide-y">
               {dayHours.map(hour => {

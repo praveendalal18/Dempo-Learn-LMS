@@ -145,6 +145,92 @@ router.put(
   },
 );
 
+// PUT /courses/:courseId/plan/session/:hour — save ONE session in place
+// (its topic/notes, date, time, links, attachments) without touching the rest.
+const sessionSchema = z.object({
+  title: z.string().trim().min(1),
+  description: z.string().nullish(),
+  preWork: z.string().nullish(),
+  caseStudy: z.string().nullish(),
+  postWork: z.string().nullish(),
+  date: dateSchema.nullable().optional(),
+  time: timeSchema.nullable().optional(),
+  links: z.array(z.string().trim()).optional().default([]),
+  attachments: z.array(attachmentSchema).optional().default([]),
+});
+
+router.put(
+  "/courses/:courseId/plan/session/:hour",
+  requireAuth,
+  async (req: Request, res: Response) => {
+    const courseId = Number(req.params.courseId);
+    const hour = Number(req.params.hour);
+    if (!Number.isInteger(courseId) || !Number.isInteger(hour) || hour < 1) {
+      res.status(400).json({ error: "Invalid id" });
+      return;
+    }
+    const course = await getCourse(courseId);
+    if (!course) { res.status(404).json({ error: "Course not found" }); return; }
+    if (!isCourseTeacher(course, req.localUser!)) {
+      res.status(403).json({ error: "Only the course teacher can edit the plan" }); return;
+    }
+    if (hour > course.planHours) {
+      res.status(400).json({ error: `Session ${hour} is beyond the plan's length` }); return;
+    }
+    const parsed = sessionSchema.safeParse(req.body);
+    if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
+    const d = parsed.data;
+    const key = String(hour);
+
+    await db.transaction(async (tx) => {
+      // Upsert the plan item (no unique index on course+hour, so update-or-insert).
+      const [existing] = await tx
+        .select({ id: coursePlanItemsTable.id })
+        .from(coursePlanItemsTable)
+        .where(and(eq(coursePlanItemsTable.courseId, courseId), eq(coursePlanItemsTable.hourNumber, hour)));
+      const itemValues = {
+        title: d.title,
+        description: d.description ?? null,
+        preWork: d.preWork ?? null,
+        caseStudy: d.caseStudy ?? null,
+        postWork: d.postWork ?? null,
+      };
+      if (existing) {
+        await tx.update(coursePlanItemsTable).set(itemValues).where(eq(coursePlanItemsTable.id, existing.id));
+      } else {
+        await tx.insert(coursePlanItemsTable).values({ courseId, hourNumber: hour, ...itemValues });
+      }
+
+      // Merge this session's date/time into the course's per-day maps.
+      const dayDates = { ...(course.planDayDates ?? {}) };
+      const dayTimes = { ...(course.planDayTimes ?? {}) };
+      if (d.date !== undefined) {
+        if (d.date) dayDates[key] = d.date; else delete dayDates[key];
+      }
+      if (d.time !== undefined) {
+        if (d.time && d.time !== (course.planStartTime ?? "09:00")) dayTimes[key] = d.time; else delete dayTimes[key];
+      }
+      await tx.update(coursesTable).set({ planDayDates: dayDates, planDayTimes: dayTimes }).where(eq(coursesTable.id, courseId));
+
+      // Upsert (or clear) this session's links/attachments.
+      const links = d.links.filter((l) => l.trim().length > 0);
+      if (links.length > 0 || d.attachments.length > 0) {
+        await tx
+          .insert(coursePlanExtrasTable)
+          .values({ courseId, hourNumber: hour, links, attachments: d.attachments })
+          .onConflictDoUpdate({
+            target: [coursePlanExtrasTable.courseId, coursePlanExtrasTable.hourNumber],
+            set: { links, attachments: d.attachments, updatedAt: new Date() },
+          });
+      } else {
+        await tx.delete(coursePlanExtrasTable).where(and(eq(coursePlanExtrasTable.courseId, courseId), eq(coursePlanExtrasTable.hourNumber, hour)));
+      }
+    });
+
+    res.json({ ok: true });
+  },
+);
+
 // GET /calendar/plan-days — dated plan days for the user's courses
 router.get(
   "/calendar/plan-days",
