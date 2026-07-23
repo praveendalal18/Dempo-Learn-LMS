@@ -19,6 +19,7 @@ import feedbackRouter from "./feedback";
 import groupsRouter from "./groups";
 import journalRouter from "./journal";
 import invitesRouter from "./invites";
+import planRouter from "./plan";
 
 const router: IRouter = Router();
 
@@ -42,5 +43,6 @@ router.use(feedbackRouter);
 router.use(groupsRouter);
 router.use(journalRouter);
 router.use(invitesRouter);
+router.use(planRouter);
 
 export default router;

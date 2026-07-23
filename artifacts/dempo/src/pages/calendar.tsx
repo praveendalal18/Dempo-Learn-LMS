@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Link } from "wouter";
+import { useQuery } from "@tanstack/react-query";
 import { useGetCalendar, getGetCalendarQueryKey } from "@workspace/api-client-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -26,26 +27,50 @@ import {
   FileText,
   MapPin,
   Video,
+  GraduationCap,
   Loader2,
 } from "lucide-react";
 
 type CalendarEvent = {
   key: string;
   date: Date;
-  kind: "session" | "assignment";
+  kind: "session" | "assignment" | "plan";
   title: string;
   courseTitle: string;
   link: string | null;
   location?: string | null;
 };
 
+type PlanDay = {
+  courseId: number;
+  courseTitle: string;
+  day: number;
+  date: string;
+  title: string;
+};
+
 function isUrl(s: string | null | undefined): boolean {
   return !!s && /^https?:\/\//i.test(s);
+}
+
+function parseYmd(s: string): Date {
+  const [y, m, d] = s.split("-").map(Number);
+  return new Date(y, (m || 1) - 1, d || 1);
+}
+
+async function fetchPlanDays(): Promise<PlanDay[]> {
+  const res = await fetch("/api/calendar/plan-days", { headers: { "Content-Type": "application/json" } });
+  if (!res.ok) return [];
+  return res.json() as Promise<PlanDay[]>;
 }
 
 export default function CalendarPage() {
   const { data, isLoading } = useGetCalendar({
     query: { queryKey: getGetCalendarQueryKey() },
+  });
+  const { data: planDays } = useQuery({
+    queryKey: ["calendar-plan-days"],
+    queryFn: fetchPlanDays,
   });
   const [view, setView] = useState<"month" | "week">("month");
   const [cursor, setCursor] = useState(() => new Date());
@@ -76,6 +101,14 @@ export default function CalendarPage() {
       courseTitle: a.courseTitle,
       link: `/assignment/${a.id}`,
     })),
+    ...(planDays ?? []).map((p) => ({
+      key: `p-${p.courseId}-${p.day}`,
+      date: parseYmd(p.date),
+      kind: "plan" as const,
+      title: `Day ${p.day}: ${p.title}`,
+      courseTitle: p.courseTitle,
+      link: `/course/${p.courseId}`,
+    })),
   ];
 
   const now = new Date();
@@ -104,7 +137,7 @@ export default function CalendarPage() {
         <div>
           <h1 className="text-3xl font-serif font-bold text-foreground">Calendar</h1>
           <p className="text-muted-foreground mt-1">
-            Class sessions and assignment due dates across your courses.
+            Class days, sessions, and assignment due dates across your courses.
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -170,10 +203,20 @@ export default function CalendarPage() {
                       </div>
                       <div className="space-y-1">
                         {dayEvents.slice(0, 3).map((e) =>
-                          e.link ? (
+                          e.kind === "plan" ? (
                             <Link
                               key={e.key}
-                              href={e.link}
+                              href={e.link!}
+                              className="block text-[11px] leading-tight px-1.5 py-1 rounded truncate bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/20 transition-colors"
+                              title={`${e.title} — ${e.courseTitle}`}
+                            >
+                              <GraduationCap className="w-3 h-3 inline mr-0.5 -mt-px" />
+                              {e.title}
+                            </Link>
+                          ) : e.kind === "assignment" ? (
+                            <Link
+                              key={e.key}
+                              href={e.link!}
                               className="block text-[11px] leading-tight px-1.5 py-1 rounded truncate bg-accent/10 text-accent-foreground border border-accent/30 hover:bg-accent/20 transition-colors"
                               title={`${e.title} — ${e.courseTitle} (due ${format(e.date, "h:mm a")})`}
                             >
@@ -219,8 +262,13 @@ export default function CalendarPage() {
                         </div>
                         <div className="space-y-1.5">
                           {dayEvents.map((e) =>
-                            e.link ? (
-                              <Link key={e.key} href={e.link} className="block text-sm px-3 py-2 rounded-lg bg-accent/10 text-accent-foreground border border-accent/30">
+                            e.kind === "plan" ? (
+                              <Link key={e.key} href={e.link!} className="block text-sm px-3 py-2 rounded-lg bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30">
+                                <GraduationCap className="w-3.5 h-3.5 inline mr-1 -mt-px" /> {e.title}{" "}
+                                <span className="text-muted-foreground">· {e.courseTitle}</span>
+                              </Link>
+                            ) : e.kind === "assignment" ? (
+                              <Link key={e.key} href={e.link!} className="block text-sm px-3 py-2 rounded-lg bg-accent/10 text-accent-foreground border border-accent/30">
                                 <FileText className="w-3.5 h-3.5 inline mr-1 -mt-px" /> {e.title}{" "}
                                 <span className="text-muted-foreground">· due {format(e.date, "h:mm a")}</span>
                               </Link>
@@ -245,6 +293,10 @@ export default function CalendarPage() {
                 <span className="flex items-center gap-1.5">
                   <span className="w-3 h-3 rounded bg-accent/10 border border-accent/30"></span>
                   Assignment due
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <span className="w-3 h-3 rounded bg-emerald-500/10 border border-emerald-500/30"></span>
+                  Class day (plan)
                 </span>
               </div>
             </CardContent>
