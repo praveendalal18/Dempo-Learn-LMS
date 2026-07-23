@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
   useGetCoursePlan, useUpdateCoursePlan, getGetCoursePlanQueryKey,
   useRequestUploadUrl,
@@ -17,6 +17,7 @@ import { useToast } from "@/hooks/use-toast";
 import {
   Loader2, Lock, Unlock, CalendarDays, BookOpen, Briefcase, ClipboardList,
   Save, Clock, Paperclip, Link as LinkIcon, ExternalLink, Download, X, CalendarClock,
+  Eye, EyeOff,
 } from "lucide-react";
 import { format } from "date-fns";
 
@@ -97,6 +98,37 @@ function formatDayDate(ymd: string): string {
 
 const storageHref = (path: string) => import.meta.env.BASE_URL + "api/storage" + path;
 
+// Textarea that grows to fit its content (up to a cap) so long notes are
+// readable without a cramped inner scrollbar.
+function AutoTextarea({
+  value, onChange, placeholder, className = "", minHeight = 60, maxHeight = 460,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  placeholder?: string;
+  className?: string;
+  minHeight?: number;
+  maxHeight?: number;
+}) {
+  const ref = useRef<HTMLTextAreaElement>(null);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${Math.min(Math.max(el.scrollHeight, minHeight), maxHeight)}px`;
+  }, [value, minHeight, maxHeight]);
+  return (
+    <Textarea
+      ref={ref}
+      value={value}
+      placeholder={placeholder}
+      onChange={(e) => onChange(e.target.value)}
+      style={{ minHeight }}
+      className={`resize-none overflow-y-auto leading-relaxed ${className}`}
+    />
+  );
+}
+
 export function CoursePlanView({ courseId, isTeacher }: { courseId: number; isTeacher: boolean }) {
   const { data: plan, isLoading } = useGetCoursePlan(courseId, {
     query: { enabled: !!courseId, queryKey: getGetCoursePlanQueryKey(courseId) },
@@ -163,10 +195,11 @@ function StudentPlanView({ plan, extras }: { plan: any; extras?: PlanExtras }) {
         const date = dayDates[String(day)];
         const time = dayTimes[String(day)] || defaultTime;
         return (
-          <Card key={day} className={`shadow-sm overflow-hidden ${dayLocked ? 'opacity-90' : ''}`}>
-            <div className={`px-6 py-3 border-b flex items-center justify-between gap-3 flex-wrap ${dayLocked ? 'bg-muted/40' : 'bg-primary/5'}`}>
-              <div className="flex items-baseline gap-3 flex-wrap">
-                <h3 className="font-serif font-semibold text-lg">{unit} {day}</h3>
+          <Card key={day} className={`overflow-hidden border shadow-sm rounded-xl transition-shadow hover:shadow-md ${dayLocked ? 'opacity-95' : ''}`}>
+            <div className={`px-5 py-3.5 border-b flex items-center justify-between gap-3 flex-wrap ${dayLocked ? 'bg-muted/40' : 'bg-gradient-to-r from-primary/[0.07] to-transparent'}`}>
+              <div className="flex items-center gap-3 flex-wrap">
+                <span className="inline-flex items-center justify-center min-w-9 h-9 px-2 rounded-lg bg-primary/10 text-primary font-serif font-bold text-base">{day}</span>
+                <h3 className="font-serif font-semibold text-lg leading-none">{unit} {day}</h3>
                 {date && (
                   <span className="inline-flex items-center gap-1.5 text-sm font-medium text-primary">
                     <CalendarClock className="w-4 h-4" /> {formatDayDate(date)}{time ? ` · ${formatTime12(time)}` : ""}
@@ -367,6 +400,20 @@ function TeacherPlanEditor({ courseId, plan, extras }: { courseId: number; plan:
     setDirty(true);
   };
 
+  // Bulk visibility: reveal everything, or everything up to session N.
+  const revealAll = () => { setLockedDays([]); setDirty(true); };
+  const revealUpTo = (n: number) => {
+    const locked: number[] = [];
+    for (let d = n + 1; d <= totalDays; d++) locked.push(d);
+    setLockedDays(locked);
+    setDirty(true);
+  };
+  // Current "visible up to" = the session just before the first locked one.
+  const visibleUpTo = lockedDays.length === 0
+    ? totalDays
+    : Math.max(0, Math.min(...lockedDays) - 1);
+  const allVisible = lockedDays.length === 0;
+
   const applyCadence = () => {
     if (!startDate || totalDays === 0 || weekdays.size === 0) return;
     const out: Record<string, string> = {};
@@ -558,6 +605,50 @@ function TeacherPlanEditor({ courseId, plan, extras }: { courseId: number; plan:
               </p>
             </div>
           )}
+
+          {totalHours > 0 && (
+            <div className="border-t pt-4 space-y-2.5">
+              <div className="flex items-center gap-2">
+                <Eye className="w-4 h-4 text-muted-foreground" />
+                <Label className="text-sm">Student visibility</Label>
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={revealAll}
+                  className={`px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors ${allVisible ? "bg-primary text-primary-foreground border-primary" : "bg-background hover:bg-muted border-input"}`}
+                >
+                  All {unitLower}s
+                </button>
+                <button
+                  type="button"
+                  onClick={() => revealUpTo(allVisible ? Math.max(1, totalDays - 1) : visibleUpTo || 1)}
+                  className={`px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors ${!allVisible ? "bg-primary text-primary-foreground border-primary" : "bg-background hover:bg-muted border-input"}`}
+                >
+                  Up to a {unitLower}
+                </button>
+                {!allVisible && (
+                  <div className="flex items-center gap-2 text-sm">
+                    <span className="text-muted-foreground">show through</span>
+                    <select
+                      className="h-9 rounded-md border border-input bg-background px-2 text-sm"
+                      value={visibleUpTo}
+                      onChange={(e) => revealUpTo(parseInt(e.target.value, 10))}
+                    >
+                      {Array.from({ length: totalDays }, (_, i) => i + 1).map((n) => (
+                        <option key={n} value={n}>{unit} {n}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {allVisible
+                  ? `Students can open every ${unitLower}'s full details.`
+                  : `Students see full details through ${unit} ${visibleUpTo}; later ${unitLower}s show the title only until you reveal them. Fine-tune any single ${unitLower} with its lock toggle below.`}
+              </p>
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -565,11 +656,12 @@ function TeacherPlanEditor({ courseId, plan, extras }: { courseId: number; plan:
         const locked = lockedDays.includes(day);
         const dayHours = Array.from({ length: hoursPerDay }, (_, h) => (day - 1) * hoursPerDay + h + 1).filter(h => h <= totalHours);
         return (
-          <Card key={day} className="shadow-sm overflow-hidden">
-            <div className={`px-6 py-3 border-b flex items-center justify-between gap-3 flex-wrap ${locked ? 'bg-muted/40' : 'bg-primary/5'}`}>
+          <Card key={day} className="overflow-hidden border shadow-sm rounded-xl transition-shadow hover:shadow-md">
+            <div className={`px-5 py-3.5 border-b flex items-center justify-between gap-3 flex-wrap ${locked ? "bg-muted/40" : "bg-gradient-to-r from-primary/[0.07] to-transparent"}`}>
               <div className="flex items-center gap-3 flex-wrap">
-                <h3 className="font-serif font-semibold text-lg">{unit} {day}</h3>
-                <div className="flex items-center gap-1.5">
+                <span className="inline-flex items-center justify-center min-w-9 h-9 px-2 rounded-lg bg-primary/10 text-primary font-serif font-bold text-base">{day}</span>
+                <h3 className="font-serif font-semibold text-lg leading-none">{unit} {day}</h3>
+                <div className="flex items-center gap-1.5 ml-1">
                   <CalendarClock className="w-4 h-4 text-muted-foreground" />
                   <Input
                     type="date"
@@ -579,68 +671,66 @@ function TeacherPlanEditor({ courseId, plan, extras }: { courseId: number; plan:
                   />
                   <Input
                     type="time"
-                    className="h-8 w-28 text-sm"
+                    className="h-8 w-[104px] text-sm"
                     value={dayTimes[String(day)] || startTime}
                     onChange={e => setDayTime(day, e.target.value)}
                     title="Start time for this session (defaults to the course start time)"
                   />
                 </div>
               </div>
-              <div className="flex items-center gap-2">
-                {locked ? <Lock className="w-4 h-4 text-muted-foreground" /> : <Unlock className="w-4 h-4 text-primary" />}
-                <Label htmlFor={`lock-${day}`} className="text-sm font-normal cursor-pointer">
-                  {locked ? 'Locked — topics only' : 'Open — full details'}
-                </Label>
-                <Switch id={`lock-${day}`} checked={locked} onCheckedChange={() => toggleDayLock(day)} />
-              </div>
+              <button
+                type="button"
+                onClick={() => toggleDayLock(day)}
+                className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border transition-colors ${locked ? "bg-muted text-muted-foreground border-transparent hover:bg-muted/70" : "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/20 hover:bg-emerald-500/20"}`}
+                title={locked ? "Locked — students see the title only. Click to reveal." : "Visible — students see full details. Click to lock."}
+              >
+                {locked ? <><EyeOff className="w-3.5 h-3.5" /> Title only</> : <><Eye className="w-3.5 h-3.5" /> Visible</>}
+              </button>
             </div>
             <CardContent className="p-0 divide-y">
               {dayHours.map(hour => {
                 const draft = drafts.get(hour);
                 const files = hourFiles.get(hour) || [];
+                const hasTitle = (draft?.title || "").trim().length > 0;
                 return (
-                  <div key={hour} className="px-6 py-5">
-                    <div className="flex items-center gap-3 mb-3">
-                      {!isSession && <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground w-16 shrink-0">Hour {hour}</span>}
+                  <div key={hour} className="p-5">
+                    <div className="flex items-center gap-3">
+                      {!isSession && <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground w-14 shrink-0">Hr {hour}</span>}
                       <Input
+                        className="text-base font-medium h-11"
                         placeholder={isSession ? "Session topic (leave empty to skip)" : "Topic for this hour (leave empty to skip)"}
                         value={draft?.title || ""}
                         onChange={e => setField(hour, 'title', e.target.value)}
                       />
                     </div>
-                    {(draft?.title || "").trim() && (
-                      <div className={`grid gap-3 ${isSession ? "" : "pl-0 md:pl-[76px]"}`}>
-                        <Textarea rows={2} placeholder="What will be covered (visible to students)..." value={draft?.description || ""} onChange={e => setField(hour, 'description', e.target.value)} />
+                    {hasTitle && (
+                      <div className={`mt-4 space-y-4 ${isSession ? "" : "md:pl-[68px]"}`}>
+                        <div className="space-y-1.5">
+                          <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">What students will learn</Label>
+                          <AutoTextarea placeholder="Describe what this session covers (visible to students)..." value={draft?.description || ""} onChange={(v) => setField(hour, 'description', v)} />
+                        </div>
                         <div className="grid md:grid-cols-3 gap-3">
-                          <div className="space-y-1">
-                            <Label className="text-xs flex items-center gap-1"><BookOpen className="w-3 h-3" /> Pre-work</Label>
-                            <Textarea rows={2} placeholder="Read/prepare before class..." value={draft?.preWork || ""} onChange={e => setField(hour, 'preWork', e.target.value)} />
-                          </div>
-                          <div className="space-y-1">
-                            <Label className="text-xs flex items-center gap-1"><Briefcase className="w-3 h-3" /> Case study</Label>
-                            <Textarea rows={2} placeholder="Case to discuss in class..." value={draft?.caseStudy || ""} onChange={e => setField(hour, 'caseStudy', e.target.value)} />
-                          </div>
-                          <div className="space-y-1">
-                            <Label className="text-xs flex items-center gap-1"><ClipboardList className="w-3 h-3" /> Post-work</Label>
-                            <Textarea rows={2} placeholder="Follow-up after class..." value={draft?.postWork || ""} onChange={e => setField(hour, 'postWork', e.target.value)} />
-                          </div>
+                          <EditPanel icon={BookOpen} label="Pre-work" tint="sky">
+                            <AutoTextarea placeholder="Read / prepare before class..." value={draft?.preWork || ""} onChange={(v) => setField(hour, 'preWork', v)} minHeight={72} />
+                          </EditPanel>
+                          <EditPanel icon={Briefcase} label="Case study" tint="violet">
+                            <AutoTextarea placeholder="Case or framework to discuss..." value={draft?.caseStudy || ""} onChange={(v) => setField(hour, 'caseStudy', v)} minHeight={72} />
+                          </EditPanel>
+                          <EditPanel icon={ClipboardList} label="Post-work" tint="amber">
+                            <AutoTextarea placeholder="Follow-up after class..." value={draft?.postWork || ""} onChange={(v) => setField(hour, 'postWork', v)} minHeight={72} />
+                          </EditPanel>
                         </div>
                         <div className="grid md:grid-cols-2 gap-3">
-                          <div className="space-y-1">
-                            <Label className="text-xs flex items-center gap-1"><LinkIcon className="w-3 h-3" /> Links (one per line)</Label>
-                            <Textarea
-                              rows={2}
-                              placeholder="https://..."
-                              value={hourLinks.get(hour) || ""}
-                              onChange={e => setLinks(hour, e.target.value)}
-                            />
+                          <div className="space-y-1.5">
+                            <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5"><LinkIcon className="w-3.5 h-3.5" /> Links <span className="font-normal normal-case tracking-normal text-muted-foreground/70">— one per line</span></Label>
+                            <AutoTextarea placeholder="https://..." value={hourLinks.get(hour) || ""} onChange={(v) => setLinks(hour, v)} minHeight={60} />
                           </div>
-                          <div className="space-y-1">
-                            <Label className="text-xs flex items-center gap-1"><Paperclip className="w-3 h-3" /> Attachments</Label>
+                          <div className="space-y-1.5">
+                            <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5"><Paperclip className="w-3.5 h-3.5" /> Attachments</Label>
                             {files.length > 0 && (
-                              <ul className="space-y-1 mb-1">
+                              <ul className="space-y-1.5 mb-1.5">
                                 {files.map((file, i) => (
-                                  <li key={i} className="flex items-center justify-between gap-2 text-sm border rounded-lg px-2.5 py-1.5 bg-muted/20">
+                                  <li key={i} className="flex items-center justify-between gap-2 text-sm border rounded-lg px-2.5 py-1.5 bg-muted/30">
                                     <span className="flex items-center gap-2 truncate">
                                       <Paperclip className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
                                       <span className="truncate">{file.name}</span>
@@ -653,7 +743,7 @@ function TeacherPlanEditor({ courseId, plan, extras }: { courseId: number; plan:
                                 ))}
                               </ul>
                             )}
-                            <label className="inline-flex items-center gap-2 h-9 px-3 rounded-md border border-input bg-background text-sm cursor-pointer hover:bg-muted/50 transition-colors w-fit">
+                            <label className="inline-flex items-center gap-2 h-9 px-3 rounded-md border border-dashed border-input bg-background text-sm cursor-pointer hover:bg-muted/50 hover:border-primary/40 transition-colors w-fit">
                               {uploadingHour === hour ? <Loader2 className="w-4 h-4 animate-spin" /> : <Paperclip className="w-4 h-4" />}
                               {uploadingHour === hour ? "Uploading..." : "Attach files"}
                               <input type="file" multiple className="hidden" disabled={uploadingHour === hour} onChange={e => { handleFiles(hour, e.target.files); e.target.value = ""; }} />
@@ -669,6 +759,23 @@ function TeacherPlanEditor({ courseId, plan, extras }: { courseId: number; plan:
           </Card>
         );
       })}
+    </div>
+  );
+}
+
+const PANEL_TINTS: Record<string, string> = {
+  sky: "border-sky-500/20 bg-sky-500/[0.04]",
+  violet: "border-violet-500/20 bg-violet-500/[0.04]",
+  amber: "border-amber-500/20 bg-amber-500/[0.04]",
+};
+
+function EditPanel({ icon: Icon, label, tint, children }: { icon: any; label: string; tint: string; children: ReactNode }) {
+  return (
+    <div className={`rounded-xl border p-3 space-y-2 ${PANEL_TINTS[tint] ?? ""}`}>
+      <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+        <Icon className="w-3.5 h-3.5" /> {label}
+      </Label>
+      {children}
     </div>
   );
 }
