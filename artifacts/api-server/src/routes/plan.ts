@@ -18,8 +18,9 @@ import {
 
 const router: IRouter = Router();
 
-const HOURS_PER_DAY = 5;
+const DEFAULT_HOURS_PER_DAY = 5;
 const dateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "expected YYYY-MM-DD");
+const timeSchema = z.string().regex(/^\d{2}:\d{2}$/, "expected HH:MM");
 const attachmentSchema = z.object({
   path: z.string(),
   name: z.string(),
@@ -51,6 +52,10 @@ router.get(
       .where(eq(coursePlanExtrasTable.courseId, courseId));
     res.json({
       dayDates: course.planDayDates ?? {},
+      dayTimes: course.planDayTimes ?? {},
+      hoursPerDay: course.planHoursPerDay ?? DEFAULT_HOURS_PER_DAY,
+      startTime: course.planStartTime ?? "09:00",
+      sessionMinutes: course.planSessionMinutes ?? 60,
       hours: extras.map((e) => ({
         hourNumber: e.hourNumber,
         links: e.links,
@@ -63,6 +68,10 @@ router.get(
 // PUT /courses/:courseId/plan-extras — teacher saves dates + links/attachments
 const putSchema = z.object({
   dayDates: z.record(z.string(), dateSchema).optional().default({}),
+  dayTimes: z.record(z.string(), timeSchema).optional().default({}),
+  hoursPerDay: z.number().int().min(1).max(12).optional(),
+  startTime: timeSchema.optional(),
+  sessionMinutes: z.number().int().min(15).max(600).optional(),
   hours: z
     .array(
       z.object({
@@ -99,10 +108,24 @@ router.put(
       return;
     }
 
+    const coursePatch: {
+      planDayDates: Record<string, string>;
+      planDayTimes: Record<string, string>;
+      planHoursPerDay?: number;
+      planStartTime?: string;
+      planSessionMinutes?: number;
+    } = {
+      planDayDates: parsed.data.dayDates,
+      planDayTimes: parsed.data.dayTimes,
+    };
+    if (parsed.data.hoursPerDay !== undefined) coursePatch.planHoursPerDay = parsed.data.hoursPerDay;
+    if (parsed.data.startTime !== undefined) coursePatch.planStartTime = parsed.data.startTime;
+    if (parsed.data.sessionMinutes !== undefined) coursePatch.planSessionMinutes = parsed.data.sessionMinutes;
+
     await db.transaction(async (tx) => {
       await tx
         .update(coursesTable)
-        .set({ planDayDates: parsed.data.dayDates })
+        .set(coursePatch)
         .where(eq(coursesTable.id, courseId));
       await tx
         .delete(coursePlanExtrasTable)
@@ -166,10 +189,15 @@ router.get(
       .from(coursePlanItemsTable)
       .where(inArray(coursePlanItemsTable.courseId, withDates.map((c) => c.id)));
 
-    // (courseId -> day -> [titles])
+    const hoursPerDayByCourse = new Map<number, number>(
+      withDates.map((c) => [c.id, c.planHoursPerDay ?? DEFAULT_HOURS_PER_DAY]),
+    );
+
+    // (courseId -> day -> [titles]), grouped by each course's own hours/day.
     const topics = new Map<string, string[]>();
     for (const it of items) {
-      const day = Math.ceil(it.hourNumber / HOURS_PER_DAY);
+      const hpd = hoursPerDayByCourse.get(it.courseId) ?? DEFAULT_HOURS_PER_DAY;
+      const day = Math.ceil(it.hourNumber / hpd);
       const key = `${it.courseId}:${day}`;
       if (!topics.has(key)) topics.set(key, []);
       topics.get(key)!.push(it.title);
@@ -180,9 +208,16 @@ router.get(
       courseTitle: string;
       day: number;
       date: string;
+      time: string;
+      durationMins: number;
+      hoursPerDay: number;
       title: string;
     }> = [];
     for (const c of withDates) {
+      const hpd = c.planHoursPerDay ?? DEFAULT_HOURS_PER_DAY;
+      const times = c.planDayTimes ?? {};
+      const defaultTime = c.planStartTime ?? "09:00";
+      const duration = c.planSessionMinutes ?? 60;
       for (const [dayStr, date] of Object.entries(c.planDayDates ?? {})) {
         const day = Number(dayStr);
         if (!Number.isInteger(day)) continue;
@@ -192,7 +227,10 @@ router.get(
           courseTitle: c.title,
           day,
           date,
-          title: t.length ? t.join(", ") : `Day ${day}`,
+          time: times[dayStr] || defaultTime,
+          durationMins: duration,
+          hoursPerDay: hpd,
+          title: t.length ? t.join(", ") : (hpd === 1 ? `Session ${day}` : `Day ${day}`),
         });
       }
     }

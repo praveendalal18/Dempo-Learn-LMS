@@ -46,6 +46,9 @@ type PlanDay = {
   courseTitle: string;
   day: number;
   date: string;
+  time?: string;
+  durationMins?: number;
+  hoursPerDay?: number;
   title: string;
 };
 
@@ -53,9 +56,10 @@ function isUrl(s: string | null | undefined): boolean {
   return !!s && /^https?:\/\//i.test(s);
 }
 
-function parseYmd(s: string): Date {
+function parseYmdTime(s: string, time?: string): Date {
   const [y, m, d] = s.split("-").map(Number);
-  return new Date(y, (m || 1) - 1, d || 1);
+  const [hh, mm] = (time || "09:00").split(":").map(Number);
+  return new Date(y, (m || 1) - 1, d || 1, hh || 0, mm || 0);
 }
 
 async function fetchPlanDays(): Promise<PlanDay[]> {
@@ -103,9 +107,9 @@ export default function CalendarPage() {
     })),
     ...(planDays ?? []).map((p) => ({
       key: `p-${p.courseId}-${p.day}`,
-      date: parseYmd(p.date),
+      date: parseYmdTime(p.date, p.time),
       kind: "plan" as const,
-      title: `Day ${p.day}: ${p.title}`,
+      title: `${p.hoursPerDay === 1 ? "Session" : "Day"} ${p.day}: ${p.title}`,
       courseTitle: p.courseTitle,
       link: `/course/${p.courseId}`,
     })),

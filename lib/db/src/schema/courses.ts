@@ -10,12 +10,21 @@ export const coursesTable = pgTable("courses", {
   // courses are hidden from students.
   isActive: boolean("is_active").notNull().default(true),
   planHours: integer("plan_hours").notNull().default(0),
+  // Teaching hours grouped into one "day"/session block. 5 = the classic
+  // 5-hour day; 1 = each hour is its own dated session (e.g. Tue/Fri classes).
+  planHoursPerDay: integer("plan_hours_per_day").notNull().default(5),
+  // Default start time (HH:MM, 24h) and length for a session, used when a
+  // specific day has no time override.
+  planStartTime: text("plan_start_time").notNull().default("09:00"),
+  planSessionMinutes: integer("plan_session_minutes").notNull().default(60),
   lockedPlanDays: jsonb("locked_plan_days")
     .notNull()
     .default([])
     .$type<number[]>(),
   // Optional calendar date (YYYY-MM-DD) per plan day, keyed by day number.
   planDayDates: jsonb("plan_day_dates").$type<Record<string, string>>(),
+  // Optional per-day start-time override (HH:MM), keyed by day number.
+  planDayTimes: jsonb("plan_day_times").$type<Record<string, string>>(),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),

@@ -33,8 +33,27 @@ type PlanFile = { path: string; name: string; size?: number };
 type HourExtra = { links: string[]; attachments: PlanFile[] };
 type PlanExtras = {
   dayDates: Record<string, string>;
+  dayTimes: Record<string, string>;
+  hoursPerDay: number;
+  startTime: string;
+  sessionMinutes: number;
   hours: { hourNumber: number; links: string[]; attachments: PlanFile[] }[];
 };
+
+// Weekday labels (0 = Sunday) for the schedule auto-fill.
+const WEEKDAYS = [
+  { i: 1, label: "Mon" }, { i: 2, label: "Tue" }, { i: 3, label: "Wed" },
+  { i: 4, label: "Thu" }, { i: 5, label: "Fri" }, { i: 6, label: "Sat" }, { i: 0, label: "Sun" },
+];
+
+function formatTime12(hhmm?: string): string {
+  if (!hhmm) return "";
+  const [h, m] = hhmm.split(":").map(Number);
+  if (Number.isNaN(h)) return hhmm;
+  const period = h >= 12 ? "pm" : "am";
+  const h12 = h % 12 === 0 ? 12 : h % 12;
+  return `${h12}:${String(m || 0).padStart(2, "0")}${period}`;
+}
 
 const HOUR_OPTIONS = [5, 10, 15, 20, 25, 30, 35, 40, 45, 50];
 
@@ -117,8 +136,13 @@ function StudentPlanView({ plan, extras }: { plan: any; extras?: PlanExtras }) {
   }
 
   const totalDays = Math.ceil(totalHours / hoursPerDay);
+  const isSession = hoursPerDay === 1;
+  const unit = isSession ? "Session" : "Day";
   const itemsByHour = new Map<number, any>(items.map((i: any) => [i.hourNumber, i]));
   const dayDates = extras?.dayDates ?? {};
+  const dayTimes = extras?.dayTimes ?? {};
+  const defaultTime = extras?.startTime ?? "";
+
   const extrasByHour = new Map<number, HourExtra>(
     (extras?.hours ?? []).map((h) => [h.hourNumber, { links: h.links, attachments: h.attachments }]),
   );
@@ -127,20 +151,25 @@ function StudentPlanView({ plan, extras }: { plan: any; extras?: PlanExtras }) {
     <div className="space-y-6">
       <div className="flex items-center gap-3 text-sm text-muted-foreground">
         <Clock className="w-4 h-4 shrink-0" />
-        <span>{totalHours} hours across {totalDays} day{totalDays > 1 ? 's' : ''} ({hoursPerDay} hours/day). Dated days also appear on your Calendar. Locked days show topics only.</span>
+        <span>
+          {isSession
+            ? `${totalHours} one-hour sessions. Dated sessions appear on your Calendar. Locked sessions show topics only.`
+            : `${totalHours} hours across ${totalDays} day${totalDays > 1 ? "s" : ""} (${hoursPerDay} hours/day). Dated days also appear on your Calendar. Locked days show topics only.`}
+        </span>
       </div>
       {Array.from({ length: totalDays }, (_, d) => d + 1).map(day => {
         const dayHours = Array.from({ length: hoursPerDay }, (_, h) => (day - 1) * hoursPerDay + h + 1).filter(h => h <= totalHours);
         const dayLocked = dayHours.some(h => itemsByHour.get(h)?.locked);
         const date = dayDates[String(day)];
+        const time = dayTimes[String(day)] || defaultTime;
         return (
           <Card key={day} className={`shadow-sm overflow-hidden ${dayLocked ? 'opacity-90' : ''}`}>
             <div className={`px-6 py-3 border-b flex items-center justify-between gap-3 flex-wrap ${dayLocked ? 'bg-muted/40' : 'bg-primary/5'}`}>
               <div className="flex items-baseline gap-3 flex-wrap">
-                <h3 className="font-serif font-semibold text-lg">Day {day}</h3>
+                <h3 className="font-serif font-semibold text-lg">{unit} {day}</h3>
                 {date && (
                   <span className="inline-flex items-center gap-1.5 text-sm font-medium text-primary">
-                    <CalendarClock className="w-4 h-4" /> {formatDayDate(date)}
+                    <CalendarClock className="w-4 h-4" /> {formatDayDate(date)}{time ? ` · ${formatTime12(time)}` : ""}
                   </span>
                 )}
               </div>
@@ -156,7 +185,7 @@ function StudentPlanView({ plan, extras }: { plan: any; extras?: PlanExtras }) {
                 const ex = extrasByHour.get(hour);
                 return (
                   <div key={hour} className="px-6 py-4 flex gap-4">
-                    <div className="shrink-0 w-16 text-xs font-bold uppercase tracking-wider text-muted-foreground pt-1">Hour {hour}</div>
+                    {!isSession && <div className="shrink-0 w-16 text-xs font-bold uppercase tracking-wider text-muted-foreground pt-1">Hour {hour}</div>}
                     <div className="flex-1 min-w-0">
                       {item ? (
                         <>
@@ -227,10 +256,16 @@ function WorkRow({ icon: Icon, label, text }: { icon: any; label: string; text: 
 
 function TeacherPlanEditor({ courseId, plan, extras }: { courseId: number; plan: any; extras?: PlanExtras }) {
   const hoursPerDay = plan.hoursPerDay || 5;
+  const isSession = hoursPerDay === 1;
+  const unit = isSession ? "Session" : "Day";
+  const unitLower = isSession ? "session" : "day";
   const [totalHours, setTotalHours] = useState<number>(plan.totalHours || 0);
   const [lockedDays, setLockedDays] = useState<number[]>(plan.lockedDays || []);
   const [drafts, setDrafts] = useState<Map<number, PlanItemDraft>>(new Map());
   const [dayDates, setDayDates] = useState<Record<string, string>>({});
+  const [dayTimes, setDayTimes] = useState<Record<string, string>>({});
+  const [startTime, setStartTime] = useState("09:00");
+  const [sessionMinutes, setSessionMinutes] = useState(60);
   // Per-hour links kept as a single textarea string (one URL per line) for editing.
   const [hourLinks, setHourLinks] = useState<Map<number, string>>(new Map());
   const [hourFiles, setHourFiles] = useState<Map<number, PlanFile[]>>(new Map());
@@ -238,9 +273,9 @@ function TeacherPlanEditor({ courseId, plan, extras }: { courseId: number; plan:
   const [saving, setSaving] = useState(false);
   const [dirty, setDirty] = useState(false);
 
-  // Cadence helper inputs
+  // Schedule auto-fill inputs
   const [startDate, setStartDate] = useState("");
-  const [cadence, setCadence] = useState<"daily" | "weekdays" | "weekly">("weekdays");
+  const [weekdays, setWeekdays] = useState<Set<number>>(new Set([1, 2, 3, 4, 5])); // Mon–Fri
 
   const updatePlan = useUpdateCoursePlan();
   const requestUrl = useRequestUploadUrl();
@@ -274,6 +309,9 @@ function TeacherPlanEditor({ courseId, plan, extras }: { courseId: number; plan:
   useEffect(() => {
     if (dirtyRef.current || !extras) return;
     setDayDates(extras.dayDates ?? {});
+    setDayTimes(extras.dayTimes ?? {});
+    setStartTime(extras.startTime || "09:00");
+    setSessionMinutes(extras.sessionMinutes || 60);
     const links = new Map<number, string>();
     const files = new Map<number, PlanFile[]>();
     for (const h of extras.hours ?? []) {
@@ -311,33 +349,43 @@ function TeacherPlanEditor({ courseId, plan, extras }: { courseId: number; plan:
     setDirty(true);
   };
 
+  const setDayTime = (day: number, value: string) => {
+    setDayTimes(prev => {
+      const next = { ...prev };
+      if (value && value !== startTime) next[String(day)] = value; else delete next[String(day)];
+      return next;
+    });
+    setDirty(true);
+  };
+
+  const toggleWeekday = (i: number) => {
+    setWeekdays(prev => { const n = new Set(prev); n.has(i) ? n.delete(i) : n.add(i); return n; });
+  };
+
   const toggleDayLock = (day: number) => {
     setLockedDays(prev => prev.includes(day) ? prev.filter(d => d !== day) : [...prev, day]);
     setDirty(true);
   };
 
   const applyCadence = () => {
-    if (!startDate || totalDays === 0) return;
-    const base = parseYmd(startDate);
+    if (!startDate || totalDays === 0 || weekdays.size === 0) return;
     const out: Record<string, string> = {};
-    if (cadence === "weekdays") {
-      const cur = new Date(base);
-      for (let day = 1; day <= totalDays; day++) {
-        while (cur.getDay() === 0 || cur.getDay() === 6) cur.setDate(cur.getDate() + 1);
+    const cur = parseYmd(startDate);
+    let day = 1;
+    // Walk forward day-by-day, assigning the next class date whenever the
+    // weekday is one the teacher selected (e.g. Tue + Fri).
+    let guard = 0;
+    while (day <= totalDays && guard < 4000) {
+      if (weekdays.has(cur.getDay())) {
         out[String(day)] = toYmd(cur);
-        cur.setDate(cur.getDate() + 1);
+        day++;
       }
-    } else {
-      const step = cadence === "weekly" ? 7 : 1;
-      for (let day = 1; day <= totalDays; day++) {
-        const d = new Date(base);
-        d.setDate(base.getDate() + (day - 1) * step);
-        out[String(day)] = toYmd(d);
-      }
+      cur.setDate(cur.getDate() + 1);
+      guard++;
     }
     setDayDates(out);
     setDirty(true);
-    toast({ title: "Dates filled", description: "Review the days below, then Save Plan." });
+    toast({ title: "Dates filled", description: `Scheduled ${Object.keys(out).length} ${unitLower}s. Review below, then Save.` });
   };
 
   const handleFiles = async (hour: number, fileList: FileList | null) => {
@@ -399,10 +447,14 @@ function TeacherPlanEditor({ courseId, plan, extras }: { courseId: number; plan:
         data: { totalHours, lockedDays: lockedDays.filter(d => d <= totalDays), items },
       });
 
-      // Only keep dates for days that still exist.
+      // Only keep dates/times for days that still exist.
       const dates: Record<string, string> = {};
       for (const [k, v] of Object.entries(dayDates)) {
         if (Number(k) <= totalDays) dates[k] = v;
+      }
+      const times: Record<string, string> = {};
+      for (const [k, v] of Object.entries(dayTimes)) {
+        if (Number(k) <= totalDays && v && v !== startTime) times[k] = v;
       }
       const hourNumbers = new Set<number>([...hourLinks.keys(), ...hourFiles.keys()]);
       const hours = Array.from(hourNumbers)
@@ -416,7 +468,7 @@ function TeacherPlanEditor({ courseId, plan, extras }: { courseId: number; plan:
 
       await api(`/courses/${courseId}/plan-extras`, {
         method: "PUT",
-        body: JSON.stringify({ dayDates: dates, hours }),
+        body: JSON.stringify({ dayDates: dates, dayTimes: times, startTime, sessionMinutes, hours }),
       });
 
       toast({ title: "Course plan saved", description: "Students will see the updated plan and dates." });
@@ -451,12 +503,20 @@ function TeacherPlanEditor({ courseId, plan, extras }: { courseId: number; plan:
                 onChange={e => { setTotalHours(parseInt(e.target.value, 10)); setDirty(true); }}
               >
                 <option value={0}>No plan</option>
-                {HOUR_OPTIONS.map(h => <option key={h} value={h}>{h} hours ({h / hoursPerDay} days)</option>)}
+                {HOUR_OPTIONS.map(h => <option key={h} value={h}>{isSession ? `${h} sessions` : `${h} hours (${h / hoursPerDay} days)`}</option>)}
               </select>
-              <p className="text-xs text-muted-foreground">{hoursPerDay} teaching hours per day.</p>
+              <p className="text-xs text-muted-foreground">{isSession ? "Each session is one teaching hour." : `${hoursPerDay} teaching hours per day.`}</p>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="start-time" className="flex items-center gap-1"><Clock className="w-3.5 h-3.5" /> Default start time</Label>
+              <Input id="start-time" type="time" className="w-36" value={startTime} onChange={e => { setStartTime(e.target.value); setDirty(true); }} />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="session-mins">Length (min)</Label>
+              <Input id="session-mins" type="number" min={15} max={600} step={15} className="w-24" value={sessionMinutes} onChange={e => { setSessionMinutes(parseInt(e.target.value, 10) || 60); setDirty(true); }} />
             </div>
             <div className="flex-1 min-w-[200px] text-sm text-muted-foreground pb-1">
-              {totalHours > 0 ? `${filledHours}/${totalHours} hours planned. Give each day a date so it lands on students' calendars. Lock a day to show topics only.` : 'Choose a duration to start planning.'}
+              {totalHours > 0 ? `${filledHours}/${totalHours} ${unitLower === "session" ? "sessions" : "hours"} planned. Give each ${unitLower} a date so it lands on students' calendars. Lock a ${unitLower} to show topics only.` : 'Choose a duration to start planning.'}
             </div>
             <Button onClick={handleSave} disabled={pending || !dirty} className="ml-auto">
               {pending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
@@ -465,27 +525,36 @@ function TeacherPlanEditor({ courseId, plan, extras }: { courseId: number; plan:
           </div>
 
           {totalHours > 0 && (
-            <div className="flex flex-wrap items-end gap-4 border-t pt-4">
-              <div className="space-y-1.5">
-                <Label htmlFor="start-date" className="text-xs flex items-center gap-1"><CalendarClock className="w-3.5 h-3.5" /> Schedule from</Label>
-                <Input id="start-date" type="date" className="w-44" value={startDate} onChange={e => setStartDate(e.target.value)} />
+            <div className="border-t pt-4 space-y-3">
+              <div className="flex flex-wrap items-end gap-4">
+                <div className="space-y-1.5">
+                  <Label htmlFor="start-date" className="text-xs flex items-center gap-1"><CalendarClock className="w-3.5 h-3.5" /> Schedule from</Label>
+                  <Input id="start-date" type="date" className="w-44" value={startDate} onChange={e => setStartDate(e.target.value)} />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs">On these days</Label>
+                  <div className="flex flex-wrap gap-1">
+                    {WEEKDAYS.map(w => {
+                      const on = weekdays.has(w.i);
+                      return (
+                        <button
+                          key={w.i}
+                          type="button"
+                          onClick={() => toggleWeekday(w.i)}
+                          className={`px-2.5 py-1.5 rounded-md text-xs font-medium border transition-colors ${on ? "bg-primary text-primary-foreground border-primary" : "bg-background hover:bg-muted border-input"}`}
+                        >
+                          {w.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+                <Button type="button" variant="outline" onClick={applyCadence} disabled={!startDate || weekdays.size === 0}>
+                  Auto-fill dates
+                </Button>
               </div>
-              <div className="space-y-1.5">
-                <Label className="text-xs">Cadence</Label>
-                <Select value={cadence} onValueChange={(v) => setCadence(v as any)}>
-                  <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="daily">Every day</SelectItem>
-                    <SelectItem value="weekdays">Weekdays only</SelectItem>
-                    <SelectItem value="weekly">Once a week</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <Button type="button" variant="outline" onClick={applyCadence} disabled={!startDate}>
-                Auto-fill dates
-              </Button>
-              <p className="text-xs text-muted-foreground pb-2 flex-1 min-w-[180px]">
-                Fills every day's date from your start date. You can still adjust any single day below to reschedule it.
+              <p className="text-xs text-muted-foreground">
+                Fills each {unitLower}'s date from your start date, landing only on the weekdays you pick (e.g. Tue + Fri). Adjust any single {unitLower} below to reschedule it.
               </p>
             </div>
           )}
@@ -499,7 +568,7 @@ function TeacherPlanEditor({ courseId, plan, extras }: { courseId: number; plan:
           <Card key={day} className="shadow-sm overflow-hidden">
             <div className={`px-6 py-3 border-b flex items-center justify-between gap-3 flex-wrap ${locked ? 'bg-muted/40' : 'bg-primary/5'}`}>
               <div className="flex items-center gap-3 flex-wrap">
-                <h3 className="font-serif font-semibold text-lg">Day {day}</h3>
+                <h3 className="font-serif font-semibold text-lg">{unit} {day}</h3>
                 <div className="flex items-center gap-1.5">
                   <CalendarClock className="w-4 h-4 text-muted-foreground" />
                   <Input
@@ -507,6 +576,13 @@ function TeacherPlanEditor({ courseId, plan, extras }: { courseId: number; plan:
                     className="h-8 w-40 text-sm"
                     value={dayDates[String(day)] || ""}
                     onChange={e => setDayDate(day, e.target.value)}
+                  />
+                  <Input
+                    type="time"
+                    className="h-8 w-28 text-sm"
+                    value={dayTimes[String(day)] || startTime}
+                    onChange={e => setDayTime(day, e.target.value)}
+                    title="Start time for this session (defaults to the course start time)"
                   />
                 </div>
               </div>
@@ -525,15 +601,15 @@ function TeacherPlanEditor({ courseId, plan, extras }: { courseId: number; plan:
                 return (
                   <div key={hour} className="px-6 py-5">
                     <div className="flex items-center gap-3 mb-3">
-                      <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground w-16 shrink-0">Hour {hour}</span>
+                      {!isSession && <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground w-16 shrink-0">Hour {hour}</span>}
                       <Input
-                        placeholder="Topic for this hour (leave empty to skip)"
+                        placeholder={isSession ? "Session topic (leave empty to skip)" : "Topic for this hour (leave empty to skip)"}
                         value={draft?.title || ""}
                         onChange={e => setField(hour, 'title', e.target.value)}
                       />
                     </div>
                     {(draft?.title || "").trim() && (
-                      <div className="pl-0 md:pl-[76px] grid gap-3">
+                      <div className={`grid gap-3 ${isSession ? "" : "pl-0 md:pl-[76px]"}`}>
                         <Textarea rows={2} placeholder="What will be covered (visible to students)..." value={draft?.description || ""} onChange={e => setField(hour, 'description', e.target.value)} />
                         <div className="grid md:grid-cols-3 gap-3">
                           <div className="space-y-1">

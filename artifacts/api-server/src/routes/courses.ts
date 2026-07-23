@@ -629,7 +629,7 @@ router.delete(
   },
 );
 
-const HOURS_PER_DAY = 5;
+const DEFAULT_HOURS_PER_DAY = 5;
 
 router.get(
   "/courses/:courseId/plan",
@@ -652,6 +652,7 @@ router.get(
     }
 
     const teacher = isCourseTeacher(course, req.localUser!);
+    const hoursPerDay = course.planHoursPerDay ?? DEFAULT_HOURS_PER_DAY;
     const lockedDays = course.lockedPlanDays ?? [];
     const lockedSet = new Set(lockedDays);
 
@@ -662,7 +663,7 @@ router.get(
     rows.sort((a, b) => a.hourNumber - b.hourNumber);
 
     const items = rows.map((row) => {
-      const day = Math.ceil(row.hourNumber / HOURS_PER_DAY);
+      const day = Math.ceil(row.hourNumber / hoursPerDay);
       const locked = !teacher && lockedSet.has(day);
       return {
         hourNumber: row.hourNumber,
@@ -679,7 +680,7 @@ router.get(
     res.json(
       GetCoursePlanResponse.parse({
         totalHours: course.planHours,
-        hoursPerDay: HOURS_PER_DAY,
+        hoursPerDay,
         lockedDays,
         items,
       }),
@@ -712,8 +713,9 @@ router.put(
       return;
     }
 
+    const hoursPerDay = course.planHoursPerDay ?? DEFAULT_HOURS_PER_DAY;
     const { totalHours, items } = parsed.data;
-    const totalDays = Math.ceil(totalHours / HOURS_PER_DAY);
+    const totalDays = Math.ceil(totalHours / hoursPerDay);
     const lockedDays = Array.from(
       new Set(
         (parsed.data.lockedDays ?? []).filter(
@@ -763,7 +765,7 @@ router.put(
     res.json(
       UpdateCoursePlanResponse.parse({
         totalHours,
-        hoursPerDay: HOURS_PER_DAY,
+        hoursPerDay,
         lockedDays,
         items: items
           .slice()
