@@ -105,7 +105,7 @@
 |------|:---:|------|
 | Pricing model (per-student/year vs flat) + margin check | 👤 | Gap #12 |
 | Master Service Agreement / contract template | ⚖️👤 | |
-| Invoicing + GST setup (Razorpay optional) | 👤 | B2B invoice may suffice at one college |
+| Invoicing + GST setup | 👤 | N/A — teaching-only tool, no in-app payments (Razorpay dropped) |
 | **Support model:** channel + response-time SLA + on-call for exams | 👤🛠️ | Gap #8 — your hardest operational promise |
 | Turn on WhatsApp/SMS notifications | 🛠️👤 | After DLT + template approval |
 | Turn on AI grading (Sarvam), quality-test on real samples | 🛠️👤 | After compliance sign-off |
