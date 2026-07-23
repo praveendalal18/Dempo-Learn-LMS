@@ -34,6 +34,7 @@ import { AnalyticsPanel } from "@/components/analytics-panel";
 import { CourseFeedbackDialog } from "@/components/course-feedback-dialog";
 import { GradebookView } from "@/components/gradebook";
 import { CourseAnnouncements } from "@/components/course-announcements";
+import { CourseDiscussion } from "@/components/course-discussion";
 import { BarChart3, Star } from "lucide-react";
 import { TeacherProfileDialog } from "@/components/teacher-profile-dialog";
 import { CourseProgressView, LeaderboardView } from "@/components/course-progress";
@@ -205,6 +206,9 @@ export default function CourseViewPage({ id }: { id: string }) {
           <TabsTrigger value="announcements" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-6 h-full font-medium">
             Announcements
           </TabsTrigger>
+          <TabsTrigger value="discussion" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-6 h-full font-medium">
+            Discussion
+          </TabsTrigger>
           <TabsTrigger value="plan" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-6 h-full font-medium">
             Course Plan
           </TabsTrigger>
@@ -290,6 +294,10 @@ export default function CourseViewPage({ id }: { id: string }) {
 
         <TabsContent value="announcements">
           <CourseAnnouncements courseId={courseId} isTeacher={isTeacher && course.teacherId === user?.id} />
+        </TabsContent>
+
+        <TabsContent value="discussion">
+          <CourseDiscussion courseId={courseId} isTeacher={isTeacher && course.teacherId === user?.id} />
         </TabsContent>
 
         <TabsContent value="schedule">

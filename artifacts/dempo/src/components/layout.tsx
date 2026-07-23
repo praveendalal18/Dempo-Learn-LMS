@@ -8,6 +8,34 @@ import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/theme-toggle";
 
+type NavEntry = { name: string; href: string; icon: React.ComponentType<{ className?: string }> };
+
+// Single source of truth for nav item rendering — used by both the desktop
+// sidebar and the mobile drawer.
+function NavList({ items, location }: { items: NavEntry[]; location: string }) {
+  return (
+    <nav className="space-y-0.5">
+      {items.map((item) => {
+        const active = location.startsWith(item.href) || (location === "/" && item.href === "/dashboard");
+        return (
+          <Link
+            key={item.name}
+            href={item.href}
+            className={`flex items-center gap-2.5 px-2.5 py-1.5 rounded-md text-sm transition-colors ${
+              active
+                ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium"
+                : "text-sidebar-foreground hover:bg-sidebar-accent/70 hover:text-sidebar-accent-foreground"
+            }`}
+          >
+            <item.icon className={`w-4 h-4 shrink-0 ${active ? "" : "text-muted-foreground"}`} />
+            {item.name}
+          </Link>
+        );
+      })}
+    </nav>
+  );
+}
+
 export function Shell({ children }: { children: React.ReactNode }) {
   const { isLoaded, isSignedIn } = useAuth();
   const { data: user, isLoading } = useGetMe({
@@ -108,18 +136,8 @@ export function Shell({ children }: { children: React.ReactNode }) {
                 <img src={import.meta.env.BASE_URL + "logo.png"} alt="Dempo Learn" className="w-6 h-6" />
                 <span className="font-serif font-semibold">Dempo Learn</span>
               </div>
-              <div className="flex-1 py-4 overflow-y-auto">
-                <nav className="space-y-0.5 px-2">
-                  {navigation.map((item) => {
-                    const active = location.startsWith(item.href) || (location === '/' && item.href === '/dashboard');
-                    return (
-                      <Link key={item.name} href={item.href} className={`flex items-center gap-2.5 px-2.5 py-1.5 rounded-md text-sm transition-colors ${active ? 'bg-accent text-accent-foreground font-medium' : 'text-muted-foreground hover:bg-accent/70 hover:text-foreground'}`}>
-                        <item.icon className={`w-4 h-4 shrink-0 ${active ? '' : 'text-muted-foreground'}`} />
-                        {item.name}
-                      </Link>
-                    );
-                  })}
-                </nav>
+              <div className="flex-1 py-4 overflow-y-auto px-2">
+                <NavList items={navigation} location={location} />
               </div>
               <div className="p-4 border-t">
                 <div className="flex items-center gap-3 mb-4">
@@ -171,25 +189,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
             </div>
           </div>
           
-          <nav className="space-y-0.5">
-            {navigation.map((item) => {
-              const active = location.startsWith(item.href) || (location === '/' && item.href === '/dashboard');
-              return (
-                <Link
-                  key={item.name}
-                  href={item.href}
-                  className={`flex items-center gap-2.5 px-2.5 py-1.5 rounded-md text-sm transition-colors ${
-                    active
-                      ? 'bg-sidebar-accent text-sidebar-accent-foreground font-medium'
-                      : 'text-sidebar-foreground hover:bg-sidebar-accent/70 hover:text-sidebar-accent-foreground'
-                  }`}
-                >
-                  <item.icon className={`w-4 h-4 shrink-0 ${active ? '' : 'text-muted-foreground'}`} />
-                  {item.name}
-                </Link>
-              );
-            })}
-          </nav>
+          <NavList items={navigation} location={location} />
         </div>
         <div className="mt-auto p-4 border-t space-y-1">
           <ThemeToggle />

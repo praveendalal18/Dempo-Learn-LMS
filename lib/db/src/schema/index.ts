@@ -16,3 +16,4 @@ export * from "./appInvites";
 export * from "./gradebook";
 export * from "./rubrics";
 export * from "./earlyAlerts";
+export * from "./discussions";

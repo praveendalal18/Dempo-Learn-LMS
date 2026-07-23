@@ -20,6 +20,7 @@ import {
 } from "@workspace/db";
 import { requireAuth } from "../middlewares/auth";
 import { getCourse, isCourseTeacher } from "../lib/authz";
+import { loadWeightConfig, weightedOverall, type ItemPct } from "../lib/gradebookWeighting";
 
 const router: IRouter = Router();
 
@@ -65,14 +66,15 @@ async function computeCourseMetrics(course: Course) {
   const studentIds = students.map((s) => s.id);
   const nameById = new Map(students.map((s) => [s.id, s.name || s.email]));
 
-  // Per-student percentage scores (submissions + quizzes) for overall/at-risk.
-  const pctByStudent = new Map<string, number[]>();
-  const push = (id: string, pct: number) => {
+  // Per-student item scores (submissions + quizzes) for overall/at-risk,
+  // weighted by the course's gradebook categories when configured.
+  const weightCfg = await loadWeightConfig(courseId);
+  const pctByStudent = new Map<string, ItemPct[]>();
+  const push = (id: string, key: string, pct: number) => {
     const arr = pctByStudent.get(id) ?? [];
-    arr.push(pct);
+    arr.push({ key, pct });
     pctByStudent.set(id, arr);
   };
-  const allPcts: number[] = [];
 
   // Assignments + submissions
   const asgs = await db
@@ -91,9 +93,7 @@ async function computeCourseMetrics(course: Course) {
       subTotal++;
       if (s.status === "graded" && s.score != null && a.maxScore) {
         graded++;
-        const pct = (s.score / a.maxScore) * 100;
-        push(s.studentId, pct);
-        allPcts.push(pct);
+        push(s.studentId, `assignment:${s.assignmentId}`, (s.score / a.maxScore) * 100);
       } else if (s.status === "submitted") pending++;
       if (s.submittedAt && a.dueDate) {
         dueConsidered++;
@@ -115,14 +115,17 @@ async function computeCourseMetrics(course: Course) {
         const pct = (at.score / at.maxScore) * 100;
         quizGraded++;
         quizPcts.push(pct);
-        push(at.studentId, pct);
-        allPcts.push(pct);
+        push(at.studentId, `quiz:${at.quizId}`, pct);
       }
     }
   }
 
   const overallByStudent = new Map<string, number>();
-  for (const [id, arr] of pctByStudent) overallByStudent.set(id, mean(arr)!);
+  for (const [id, arr] of pctByStudent) {
+    const o = weightedOverall(arr, weightCfg);
+    if (o != null) overallByStudent.set(id, o);
+  }
+  const overallValues = [...overallByStudent.values()];
 
   // Grade distribution (of student overall %)
   const bands = [
@@ -203,7 +206,7 @@ async function computeCourseMetrics(course: Course) {
     course: { id: course.id, title: course.title },
     enrolledCount: students.length,
     submissions: { total: subTotal, graded, pending, onTimeRate },
-    avgScore: round(mean(allPcts)),
+    avgScore: round(mean(overallValues)),
     quiz: { count: quizzes.length, graded: quizGraded, avgScore: round(mean(quizPcts)) },
     gradeDistribution: bands.map((b) => ({ band: b.band, count: b.count })),
     engagement: { active7: active7.size, active30: active30.size, logins30 },
@@ -373,18 +376,28 @@ router.get("/analytics/course/:courseId/export.csv", requireAuth, async (req: Re
     .orderBy(usersTable.name);
   const studentIds = students.map((s) => s.id);
 
-  // per-student score
+  // per-student score (weighted by gradebook categories when configured)
+  const weightCfg = await loadWeightConfig(courseId);
   const asgs = await db.select({ id: assignmentsTable.id, maxScore: assignmentsTable.maxScore }).from(assignmentsTable).where(eq(assignmentsTable.courseId, courseId));
   const asgById = new Map(asgs.map((a) => [a.id, a]));
   const asgIds = asgs.map((a) => a.id);
-  const pctByStudent = new Map<string, number[]>();
+  const pctByStudent = new Map<string, ItemPct[]>();
+  const pushItem = (id: string, key: string, pct: number) => {
+    const arr = pctByStudent.get(id) ?? []; arr.push({ key, pct }); pctByStudent.set(id, arr);
+  };
   if (asgIds.length) {
     const subs = await db.select().from(submissionsTable).where(inArray(submissionsTable.assignmentId, asgIds));
     for (const s of subs) {
       const a = asgById.get(s.assignmentId);
-      if (a && s.status === "graded" && s.score != null && a.maxScore) {
-        const arr = pctByStudent.get(s.studentId) ?? []; arr.push((s.score / a.maxScore) * 100); pctByStudent.set(s.studentId, arr);
-      }
+      if (a && s.status === "graded" && s.score != null && a.maxScore) pushItem(s.studentId, `assignment:${s.assignmentId}`, (s.score / a.maxScore) * 100);
+    }
+  }
+  const quizRows = await db.select({ id: quizzesTable.id }).from(quizzesTable).where(eq(quizzesTable.courseId, courseId));
+  const quizIds2 = quizRows.map((q) => q.id);
+  if (quizIds2.length) {
+    const attempts = await db.select().from(quizAttemptsTable).where(inArray(quizAttemptsTable.quizId, quizIds2));
+    for (const at of attempts) {
+      if (at.score != null && at.maxScore) pushItem(at.studentId, `quiz:${at.quizId}`, (at.score / at.maxScore) * 100);
     }
   }
   // attendance per student
@@ -406,10 +419,11 @@ router.get("/analytics/course/:courseId/export.csv", requireAuth, async (req: Re
 
   const rows = students.map((s) => {
     const arr = pctByStudent.get(s.id) ?? [];
+    const overall = weightedOverall(arr, weightCfg);
     const a = attByStudent.get(s.id);
     const la = lastActive.get(s.id);
     return [
-      s.name ?? "", s.email, arr.length ? Math.round(mean(arr)!) : "", arr.length,
+      s.name ?? "", s.email, overall != null ? Math.round(overall) : "", arr.length,
       a && a.total ? Math.round((a.present / a.total) * 100) : "",
       la ? la.toISOString().slice(0, 10) : "over 30d ago",
     ];

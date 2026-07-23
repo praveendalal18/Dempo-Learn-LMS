@@ -5,9 +5,11 @@ import {
   getGetCourseMyStatsQueryKey,
   getGetCourseLeaderboardQueryKey,
 } from "@workspace/api-client-react";
+import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Badge, type BadgeProps } from "@/components/ui/badge";
 import {
   Trophy,
   Loader2,
@@ -17,12 +19,149 @@ import {
   GraduationCap,
   CheckCircle,
   Medal,
+  CalendarCheck,
 } from "lucide-react";
 import { format } from "date-fns";
 
 function formatScore(score: number | null | undefined) {
   if (score == null) return "—";
   return `${Number.isInteger(score) ? score : score.toFixed(1)}%`;
+}
+
+type AttendanceStatus = "present" | "late" | "absent" | "excused" | null;
+
+interface MyAttendance {
+  rate: number | null;
+  marked: number;
+  counts: { present: number; late: number; absent: number; excused: number };
+  sessions: {
+    id: number;
+    title: string;
+    startsAt: string;
+    status: AttendanceStatus;
+  }[];
+}
+
+const STATUS_META: Record<
+  Exclude<AttendanceStatus, null>,
+  { variant: BadgeProps["variant"]; label: string }
+> = {
+  present: { variant: "success", label: "Present" },
+  late: { variant: "warning", label: "Late" },
+  absent: { variant: "danger", label: "Absent" },
+  excused: { variant: "secondary", label: "Excused" },
+};
+
+function rateColorClass(rate: number) {
+  if (rate >= 90) return "text-success";
+  if (rate >= 75) return "text-warning";
+  return "text-danger";
+}
+
+function CourseAttendanceSection({ courseId }: { courseId: number }) {
+  const { data, isLoading } = useQuery<MyAttendance>({
+    queryKey: ["my-attendance", courseId],
+    enabled: !!courseId,
+    queryFn: async () => {
+      const res = await fetch(`/api/courses/${courseId}/my-attendance`);
+      if (!res.ok) throw new Error("Failed to load attendance");
+      return res.json();
+    },
+  });
+
+  if (isLoading) {
+    return (
+      <section>
+        <h2 className="text-xl font-serif font-semibold mb-4">My Attendance</h2>
+        <Card className="shadow-sm">
+          <CardContent className="p-8 text-center">
+            <Loader2 className="w-5 h-5 animate-spin mx-auto text-muted-foreground" />
+          </CardContent>
+        </Card>
+      </section>
+    );
+  }
+
+  if (!data) return null;
+
+  const { rate, marked, counts, sessions } = data;
+  const hasData = marked > 0 || sessions.length > 0;
+
+  return (
+    <section>
+      <h2 className="text-xl font-serif font-semibold mb-4">My Attendance</h2>
+
+      {!hasData ? (
+        <Card className="border-dashed">
+          <CardContent className="p-12 text-center text-muted-foreground flex flex-col items-center">
+            <CalendarCheck className="w-12 h-12 text-muted mb-4" />
+            <h3 className="text-lg font-medium text-foreground mb-2">No attendance yet</h3>
+            <p className="max-w-sm">
+              Once your professor records attendance for class sessions, it will show up here.
+            </p>
+          </CardContent>
+        </Card>
+      ) : (
+        <Card className="shadow-sm">
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Attendance Rate
+            </CardTitle>
+            <CalendarCheck className="w-4 h-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-baseline gap-3">
+              {rate == null ? (
+                <div className="text-2xl font-semibold text-muted-foreground">
+                  Not recorded yet
+                </div>
+              ) : (
+                <div className={`text-3xl font-bold ${rateColorClass(rate)}`}>
+                  {Number.isInteger(rate) ? rate : rate.toFixed(1)}%
+                </div>
+              )}
+              <span className="text-sm text-muted-foreground">
+                {marked} {marked === 1 ? "session" : "sessions"} marked
+              </span>
+            </div>
+
+            <div className="flex flex-wrap gap-2 mt-4">
+              <Badge variant="success">Present {counts.present}</Badge>
+              <Badge variant="warning">Late {counts.late}</Badge>
+              <Badge variant="danger">Absent {counts.absent}</Badge>
+              <Badge variant="secondary">Excused {counts.excused}</Badge>
+            </div>
+
+            {sessions.length > 0 && (
+              <div className="mt-6 -mx-6 border-t divide-y">
+                {sessions.map((s) => {
+                  const meta = s.status ? STATUS_META[s.status] : null;
+                  return (
+                    <div key={s.id} className="flex items-center gap-4 px-6 py-3">
+                      <div className="flex-1 min-w-0">
+                        <div className="font-medium truncate">{s.title}</div>
+                        <div className="text-sm text-muted-foreground flex items-center gap-1 mt-0.5">
+                          <Clock className="w-3 h-3" />
+                          {format(new Date(s.startsAt), "MMM d, yyyy · h:mm a")}
+                        </div>
+                      </div>
+                      <div className="shrink-0">
+                        {meta ? (
+                          <Badge variant={meta.variant}>{meta.label}</Badge>
+                        ) : (
+                          <span className="text-sm text-muted-foreground">—</span>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+    </section>
+  );
 }
 
 export function CourseProgressView({ courseId }: { courseId: number }) {
@@ -80,6 +219,9 @@ export function CourseProgressView({ courseId }: { courseId: number }) {
           </CardContent>
         </Card>
       </div>
+
+      {/* Attendance */}
+      <CourseAttendanceSection courseId={courseId} />
 
       {/* Submissions & feedback */}
       <section>

@@ -9,9 +9,48 @@ import {
   usersTable,
 } from "@workspace/db";
 import { requireAuth } from "../middlewares/auth";
-import { getCourse, isCourseTeacher, canViewCourse } from "../lib/authz";
+import { getCourse, isCourseTeacher, canViewCourse, canAccessCourse } from "../lib/authz";
 
 const router: IRouter = Router();
+
+// GET the signed-in student's own attendance for a course.
+router.get(
+  "/courses/:courseId/my-attendance",
+  requireAuth,
+  async (req: Request, res: Response) => {
+    const courseId = Number(req.params.courseId);
+    if (!Number.isInteger(courseId)) { res.status(400).json({ error: "Invalid course id" }); return; }
+    const course = await getCourse(courseId);
+    if (!course) { res.status(404).json({ error: "Course not found" }); return; }
+    if (!(await canAccessCourse(course, req.localUser!))) { res.status(403).json({ error: "Forbidden" }); return; }
+
+    const sessions = await db
+      .select({ id: classSessionsTable.id, title: classSessionsTable.title, startsAt: classSessionsTable.startsAt })
+      .from(classSessionsTable)
+      .where(eq(classSessionsTable.courseId, courseId))
+      .orderBy(classSessionsTable.startsAt);
+    const rows = await db
+      .select({ sessionId: attendanceTable.sessionId, status: attendanceTable.status })
+      .from(attendanceTable)
+      .where(and(eq(attendanceTable.courseId, courseId), eq(attendanceTable.studentId, req.localUser!.id)));
+    const bySession = new Map(rows.map((r) => [r.sessionId, r.status]));
+
+    const marked = rows.length;
+    let present = 0;
+    for (const r of rows) if (r.status === "present" || r.status === "late") present++;
+    res.json({
+      rate: marked ? Math.round((present / marked) * 100) : null,
+      marked,
+      counts: {
+        present: rows.filter((r) => r.status === "present").length,
+        late: rows.filter((r) => r.status === "late").length,
+        absent: rows.filter((r) => r.status === "absent").length,
+        excused: rows.filter((r) => r.status === "excused").length,
+      },
+      sessions: sessions.map((s) => ({ ...s, status: bySession.get(s.id) ?? null })),
+    });
+  },
+);
 
 const STATUSES = ["present", "absent", "late", "excused"] as const;
 

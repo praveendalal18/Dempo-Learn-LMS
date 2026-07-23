@@ -23,6 +23,7 @@ import {
   getTargetsByAssignment,
   getGroupTargetsByAssignment,
 } from "../lib/authz";
+import { loadWeightConfig, weightedOverall, type WeightConfig, type ItemPct } from "../lib/gradebookWeighting";
 import { or } from "drizzle-orm";
 
 const router: IRouter = Router();
@@ -42,14 +43,15 @@ function computeStats(
   assignmentById: Map<number, Assignment>,
   quizAttempts: QuizAttemptRow[] = [],
   quizById: Map<number, QuizRow> = new Map(),
+  weightCfg: WeightConfig | null = null,
 ) {
   const completed = new Set(subs.map((s) => s.assignmentId));
-  const gradedPcts: number[] = [];
+  const itemPcts: ItemPct[] = [];
   for (const s of subs) {
     if (s.status !== "graded" || s.score == null) continue;
     const maxScore = assignmentById.get(s.assignmentId)?.maxScore;
     if (!maxScore || maxScore <= 0) continue;
-    gradedPcts.push((s.score / maxScore) * 100);
+    itemPcts.push({ key: `assignment:${s.assignmentId}`, pct: (s.score / maxScore) * 100 });
   }
   // Quizzes count once results are published (score finalized by teacher).
   let quizCompleted = 0;
@@ -63,18 +65,13 @@ function computeStats(
       a.score != null &&
       a.maxScore > 0
     ) {
-      gradedPcts.push((a.score / a.maxScore) * 100);
+      itemPcts.push({ key: `quiz:${a.quizId}`, pct: (a.score / a.maxScore) * 100 });
     }
   }
-  const overallScore = gradedPcts.length
-    ? Math.round(
-        (gradedPcts.reduce((a, b) => a + b, 0) / gradedPcts.length) * 10,
-      ) / 10
-    : null;
   return {
-    overallScore,
+    overallScore: weightedOverall(itemPcts, weightCfg),
     completedCount: completed.size + quizCompleted,
-    gradedCount: gradedPcts.length,
+    gradedCount: itemPcts.length,
   };
 }
 
@@ -218,7 +215,8 @@ router.get(
           .orderBy(desc(submissionsTable.submittedAt))
       : [];
 
-    const stats = computeStats(subs, assignmentById, myQuizAttempts, quizById);
+    const weightCfg = await loadWeightConfig(course.id);
+    const stats = computeStats(subs, assignmentById, myQuizAttempts, quizById, weightCfg);
 
     res.json(
       GetCourseMyStatsResponse.parse({
@@ -335,6 +333,7 @@ router.get(
       quizAttemptsByStudent.set(a.studentId, list);
     }
 
+    const weightCfg = await loadWeightConfig(course.id);
     const rows = enrollments.map((e) => ({
       studentId: e.studentId,
       name: e.name,
@@ -345,6 +344,7 @@ router.get(
         assignmentById,
         quizAttemptsByStudent.get(e.studentId) ?? [],
         quizById,
+        weightCfg,
       ),
     }));
 

@@ -6,11 +6,38 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { Users, FileText, Plus, LogIn, Loader2, ArrowRight } from "lucide-react";
+import { Users, FileText, Plus, LogIn, Loader2, ArrowRight, Download } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
 import { getListCoursesQueryKey } from "@workspace/api-client-react";
 import { PageContainer, PageHeader } from "@/components/page";
+
+function DownloadTranscriptButton() {
+  const [busy, setBusy] = useState(false);
+  const { toast } = useToast();
+  const download = async () => {
+    setBusy(true);
+    try {
+      const res = await fetch("/api/me/transcript.csv");
+      if (!res.ok) throw new Error("Could not generate transcript");
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url; a.download = "dempo-transcript.csv"; a.click();
+      URL.revokeObjectURL(url);
+    } catch (e: any) {
+      toast({ title: "Couldn't download transcript", description: e?.message, variant: "destructive" });
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <Button variant="outline" size="sm" onClick={download} disabled={busy}>
+      {busy ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Download className="w-4 h-4 mr-2" />}
+      Transcript
+    </Button>
+  );
+}
 
 export default function CoursesPage() {
   const { data: user } = useGetMe();
@@ -22,7 +49,7 @@ export default function CoursesPage() {
       <PageHeader
         title="Courses"
         description={isTeacher ? "Manage your classes and curriculum." : "Your enrolled classes."}
-        actions={isTeacher ? <CreateCourseDialog /> : <JoinCourseDialog />}
+        actions={isTeacher ? <CreateCourseDialog /> : <><DownloadTranscriptButton /><JoinCourseDialog /></>}
       />
 
       {isLoading ? (

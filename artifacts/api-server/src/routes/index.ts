@@ -27,6 +27,8 @@ import gradebookRouter from "./gradebook";
 import rubricsRouter from "./rubrics";
 import announcementsRouter from "./announcements";
 import earlyAlertsRouter from "./earlyAlerts";
+import discussionsRouter from "./discussions";
+import transcriptRouter from "./transcript";
 
 const router: IRouter = Router();
 
@@ -58,5 +60,7 @@ router.use(gradebookRouter);
 router.use(rubricsRouter);
 router.use(announcementsRouter);
 router.use(earlyAlertsRouter);
+router.use(discussionsRouter);
+router.use(transcriptRouter);
 
 export default router;
