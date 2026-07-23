@@ -14,6 +14,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, UploadCloud, Link as LinkIcon, FileText, Video, Music, CheckCircle, Clock, Award, ArrowRight, Paperclip, Download, Sparkles, Copy, RefreshCw, Users as UsersIcon, Pencil } from "lucide-react";
 import { EditAssignmentDialog } from "@/components/edit-assignment-dialog";
+import { RubricEditor } from "@/components/rubric-editor";
 import { format } from "date-fns";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Link } from "wouter";
@@ -45,12 +46,13 @@ export default function AssignmentViewPage({ id }: { id: string }) {
               <div className="flex items-start justify-between gap-4">
                 <h1 className="text-2xl font-semibold tracking-tight text-foreground mb-4">{assignment.title}</h1>
                 {isTeacher && (
-                  <>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <RubricEditor assignmentId={assignmentId} maxScore={assignment.maxScore} />
                     <Button variant="outline" size="sm" className="shrink-0" onClick={() => setEditOpen(true)}>
                       <Pencil className="w-4 h-4 mr-2" /> Edit
                     </Button>
                     <EditAssignmentDialog assignment={assignment} open={editOpen} onOpenChange={setEditOpen} />
-                  </>
+                  </div>
                 )}
               </div>
               {assignment.description && (

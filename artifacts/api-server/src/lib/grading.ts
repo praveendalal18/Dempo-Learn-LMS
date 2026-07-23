@@ -30,6 +30,7 @@ export async function gradeTextSubmission(
   assignmentDescription: string | null,
   maxScore: number,
   textResponse: string,
+  rubric?: { name: string; description?: string; maxPoints: number }[] | null,
 ): Promise<AiGradeResult> {
   if (typeof textResponse !== "string" || textResponse.trim().length === 0) {
     return { aiScore: null, aiFeedback: null };
@@ -39,12 +40,19 @@ export async function gradeTextSubmission(
     return { aiScore: null, aiFeedback: null };
   }
 
+  const rubricBlock =
+    rubric && rubric.length
+      ? `\nGrade strictly against this rubric (points per criterion):\n${rubric
+          .map((c) => `- ${c.name} (max ${c.maxPoints})${c.description ? `: ${c.description}` : ""}`)
+          .join("\n")}\nAward points per criterion and sum them for the score; reference the criteria in your feedback.\n`
+      : "";
+
   const prompt = `You are an experienced teaching assistant grading a student submission.
 
 Assignment: ${assignmentTitle}
 ${assignmentDescription ? `Instructions: ${assignmentDescription}` : ""}
 Maximum score: ${maxScore}
-
+${rubricBlock}
 Student submission:
 """
 ${textResponse}

@@ -9,7 +9,8 @@ import {
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Loader2, Download, AlertTriangle, Star } from "lucide-react";
+import { Loader2, Download, AlertTriangle, Star, BellRing } from "lucide-react";
+import { EarlyAlertDialog } from "@/components/early-alert-dialog";
 
 type CourseAnalytics = {
   course: { id: number; title: string };
@@ -20,7 +21,7 @@ type CourseAnalytics = {
   gradeDistribution: { band: string; count: number }[];
   engagement: { active7: number; active30: number; logins30: number };
   attendance: { rate: number | null; sessions: number; marked: number };
-  atRisk: { name: string; overallPct: number | null; lastActiveAt: string | null; reason: string }[];
+  atRisk: { studentId: string; name: string; overallPct: number | null; lastActiveAt: string | null; reason: string }[];
   feedback: {
     count: number;
     avgOverall: number | null;
@@ -80,6 +81,9 @@ export function AnalyticsPanel({ courseId }: { courseId: number }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [downloading, setDownloading] = useState(false);
+  const [alertStudent, setAlertStudent] = useState<
+    { studentId: string; name: string; reason?: string } | null
+  >(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -275,6 +279,17 @@ export function AnalyticsPanel({ courseId }: { courseId: number }) {
                         {formatDate(s.lastActiveAt)}
                       </div>
                     </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="shrink-0 gap-1.5"
+                      onClick={() =>
+                        setAlertStudent({ studentId: s.studentId, name: s.name, reason: s.reason })
+                      }
+                    >
+                      <BellRing className="h-4 w-4" />
+                      <span className="sr-only sm:not-sr-only">Send alert</span>
+                    </Button>
                   </li>
                 ))}
               </ul>
@@ -282,6 +297,15 @@ export function AnalyticsPanel({ courseId }: { courseId: number }) {
           </CardContent>
         </Card>
       </div>
+
+      <EarlyAlertDialog
+        courseId={courseId}
+        student={alertStudent}
+        open={alertStudent != null}
+        onOpenChange={(v) => {
+          if (!v) setAlertStudent(null);
+        }}
+      />
     </div>
   );
 }

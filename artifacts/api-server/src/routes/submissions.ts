@@ -6,6 +6,7 @@ import {
   submissionsTable,
   submissionSimilaritiesTable,
   coursesTable,
+  assignmentRubricsTable,
 } from "@workspace/db";
 import {
   CreateSubmissionParams,
@@ -195,12 +196,17 @@ router.post(
         .map((s) => s.textResponse)
         .filter((t): t is string => !!t && t.trim().length > 0);
 
+      const [rubricRow] = await db
+        .select()
+        .from(assignmentRubricsTable)
+        .where(eq(assignmentRubricsTable.assignmentId, assignment.id));
       const [grade] = await Promise.all([
         gradeTextSubmission(
           assignment.title,
           assignment.description,
           assignment.maxScore,
           text,
+          rubricRow?.criteria ?? null,
         ),
       ]);
       aiScore = grade.aiScore;

@@ -13,3 +13,6 @@ export * from "./groups";
 export * from "./coordinatorAssignments";
 export * from "./journal";
 export * from "./appInvites";
+export * from "./gradebook";
+export * from "./rubrics";
+export * from "./earlyAlerts";

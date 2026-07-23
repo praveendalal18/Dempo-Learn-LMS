@@ -173,6 +173,7 @@ async function computeCourseMetrics(course: Course) {
       const lowScore = o != null && o < 50;
       if (!inactive && !lowScore) return null;
       return {
+        studentId: s.id,
         name: nameById.get(s.id) ?? "Student",
         overallPct: o == null ? null : Math.round(o),
         lastActiveAt: la ? la.toISOString() : null,

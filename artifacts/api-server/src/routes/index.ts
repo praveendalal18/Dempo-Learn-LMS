@@ -23,6 +23,10 @@ import planRouter from "./plan";
 import attendanceRouter from "./attendance";
 import courseFeedbackRouter from "./courseFeedback";
 import analyticsRouter from "./analytics";
+import gradebookRouter from "./gradebook";
+import rubricsRouter from "./rubrics";
+import announcementsRouter from "./announcements";
+import earlyAlertsRouter from "./earlyAlerts";
 
 const router: IRouter = Router();
 
@@ -50,5 +54,9 @@ router.use(planRouter);
 router.use(attendanceRouter);
 router.use(courseFeedbackRouter);
 router.use(analyticsRouter);
+router.use(gradebookRouter);
+router.use(rubricsRouter);
+router.use(announcementsRouter);
+router.use(earlyAlertsRouter);
 
 export default router;

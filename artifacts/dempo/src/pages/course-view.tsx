@@ -32,6 +32,8 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { CoursePlanView } from "@/components/course-plan";
 import { AnalyticsPanel } from "@/components/analytics-panel";
 import { CourseFeedbackDialog } from "@/components/course-feedback-dialog";
+import { GradebookView } from "@/components/gradebook";
+import { CourseAnnouncements } from "@/components/course-announcements";
 import { BarChart3, Star } from "lucide-react";
 import { TeacherProfileDialog } from "@/components/teacher-profile-dialog";
 import { CourseProgressView, LeaderboardView } from "@/components/course-progress";
@@ -200,6 +202,9 @@ export default function CourseViewPage({ id }: { id: string }) {
               )}
             </span>
           </TabsTrigger>
+          <TabsTrigger value="announcements" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-6 h-full font-medium">
+            Announcements
+          </TabsTrigger>
           <TabsTrigger value="plan" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-6 h-full font-medium">
             Course Plan
           </TabsTrigger>
@@ -227,6 +232,11 @@ export default function CourseViewPage({ id }: { id: string }) {
           {isTeacher && course.teacherId === user?.id && (
             <TabsTrigger value="integrity" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-6 h-full font-medium">
               Integrity
+            </TabsTrigger>
+          )}
+          {isTeacher && course.teacherId === user?.id && (
+            <TabsTrigger value="gradebook" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-6 h-full font-medium">
+              Gradebook
             </TabsTrigger>
           )}
           {isTeacher && course.teacherId === user?.id && (
@@ -278,6 +288,10 @@ export default function CourseViewPage({ id }: { id: string }) {
           <CourseMaterialsView courseId={courseId} isTeacher={isTeacher && course.teacherId === user?.id} />
         </TabsContent>
 
+        <TabsContent value="announcements">
+          <CourseAnnouncements courseId={courseId} isTeacher={isTeacher && course.teacherId === user?.id} />
+        </TabsContent>
+
         <TabsContent value="schedule">
           <CourseSchedule courseId={courseId} isTeacher={isTeacher && course.teacherId === user?.id} />
         </TabsContent>
@@ -311,6 +325,12 @@ export default function CourseViewPage({ id }: { id: string }) {
         {isTeacher && course.teacherId === user?.id && (
           <TabsContent value="integrity">
             <CourseIntegrityView courseId={courseId} />
+          </TabsContent>
+        )}
+
+        {isTeacher && course.teacherId === user?.id && (
+          <TabsContent value="gradebook">
+            <GradebookView courseId={courseId} canEdit={isTeacher && course.teacherId === user?.id} />
           </TabsContent>
         )}
 

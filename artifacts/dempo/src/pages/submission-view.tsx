@@ -10,9 +10,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { getGetSubmissionQueryKey } from "@workspace/api-client-react";
-import { Loader2, CheckCircle, AlertTriangle, FileText, Link as LinkIcon, Download, Sparkles, UserCircle, Clock, Copy } from "lucide-react";
+import { Loader2, CheckCircle, AlertTriangle, FileText, Link as LinkIcon, Download, Sparkles, UserCircle, Clock, Copy, ListChecks } from "lucide-react";
 import { AiDeclarationBadge, SimilarityBadge } from "./assignment-view";
 import { Link } from "wouter";
 import { format } from "date-fns";
@@ -315,25 +315,82 @@ function ComparisonDialog({ submissionId, otherSubmissionId, leftName, rightName
 function GradingPanel({ submission }: { submission: any }) {
   const [score, setScore] = useState<number | string>(submission.score || submission.aiScore || "");
   const [feedback, setFeedback] = useState(submission.feedback || submission.aiFeedback || "");
-  
+  const [marks, setMarks] = useState<Record<string, number>>({});
+  const [savingRubric, setSavingRubric] = useState(false);
+
   const gradeMutation = useGradeSubmission(submission.id);
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
-  const handleGrade = (e: React.FormEvent) => {
+  const { data: rubric } = useQuery({
+    queryKey: ["submission-rubric", submission.id],
+    queryFn: async () => {
+      const res = await fetch("/api" + `/submissions/${submission.id}/rubric`);
+      if (!res.ok) throw new Error("Failed to load rubric");
+      return (await res.json()) as {
+        criteria: { name: string; description?: string; maxPoints: number }[];
+        scores: { name: string; points: number }[];
+        maxScore: number;
+      };
+    },
+  });
+
+  const hasRubric = !!rubric?.criteria?.length;
+
+  useEffect(() => {
+    if (rubric?.criteria?.length) {
+      const initial: Record<string, number> = {};
+      rubric.criteria.forEach((c) => {
+        const existing = rubric.scores?.find((s) => s.name === c.name);
+        initial[c.name] = existing ? Number(existing.points) || 0 : 0;
+      });
+      setMarks(initial);
+    }
+  }, [rubric]);
+
+  const rubricTotal = hasRubric
+    ? rubric!.criteria.reduce((sum, c) => sum + (Number(marks[c.name]) || 0), 0)
+    : 0;
+
+  const handleGrade = async (e: React.FormEvent) => {
     e.preventDefault();
-    const numScore = parseInt(score.toString(), 10);
-    if (isNaN(numScore) || numScore < 0 || numScore > (submission.maxScore || 100)) {
-      toast({ title: "Invalid score", variant: "destructive" });
-      return;
+
+    let numScore: number;
+    if (hasRubric) {
+      numScore = rubricTotal;
+    } else {
+      numScore = parseInt(score.toString(), 10);
+      if (isNaN(numScore) || numScore < 0 || numScore > (submission.maxScore || 100)) {
+        toast({ title: "Invalid score", variant: "destructive" });
+        return;
+      }
     }
 
-    gradeMutation.mutate({ submissionId: submission.id, data: { score: numScore, feedback } }, {
-      onSuccess: () => {
-        toast({ title: "Grade saved successfully" });
-        queryClient.invalidateQueries({ queryKey: getGetSubmissionQueryKey(submission.id) });
+    try {
+      if (hasRubric) {
+        setSavingRubric(true);
+        const res = await fetch("/api" + `/submissions/${submission.id}/rubric`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            scores: rubric!.criteria.map((c) => ({ name: c.name, points: Number(marks[c.name]) || 0 })),
+          }),
+        });
+        setSavingRubric(false);
+        if (!res.ok) throw new Error("Failed to save rubric marks");
+        queryClient.invalidateQueries({ queryKey: ["submission-rubric", submission.id] });
       }
-    });
+
+      gradeMutation.mutate({ submissionId: submission.id, data: { score: numScore, feedback } }, {
+        onSuccess: () => {
+          toast({ title: "Grade saved successfully" });
+          queryClient.invalidateQueries({ queryKey: getGetSubmissionQueryKey(submission.id) });
+        },
+      });
+    } catch (err: any) {
+      setSavingRubric(false);
+      toast({ title: "Could not save grade", description: err?.message, variant: "destructive" });
+    }
   };
 
   const applyAIFeedback = () => {
@@ -353,22 +410,67 @@ function GradingPanel({ submission }: { submission: any }) {
           </div>
         </CardHeader>
         <CardContent className="pt-6 space-y-6 bg-background">
-          <div className="space-y-3">
-            <Label htmlFor="score" className="text-base font-semibold flex items-center gap-2">
-              Final Score <span className="text-muted-foreground font-normal text-sm">(out of {submission.maxScore})</span>
-            </Label>
-            <Input 
-              id="score" 
-              type="number" 
-              className="text-2xl font-bold h-14 pl-4 w-32 border-2 focus-visible:ring-primary"
-              value={score} 
-              onChange={e => setScore(e.target.value)} 
-              min="0"
-              max={submission.maxScore}
-              required
-            />
-          </div>
-          
+          {hasRubric ? (
+            <div className="space-y-4">
+              <div className="flex items-center gap-2">
+                <ListChecks className="w-4 h-4 text-primary" />
+                <span className="text-base font-semibold">Rubric marks</span>
+              </div>
+              <div className="space-y-3">
+                {rubric!.criteria.map((c) => (
+                  <div key={c.name} className="border rounded-xl p-3 bg-muted/20">
+                    <div className="flex items-center gap-3">
+                      <div className="flex-1 min-w-0">
+                        <div className="font-medium text-sm">{c.name}</div>
+                        {c.description && (
+                          <div className="text-xs text-muted-foreground mt-0.5">{c.description}</div>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <Input
+                          type="number"
+                          min="0"
+                          max={c.maxPoints}
+                          className="w-20 h-10 text-center font-semibold"
+                          value={marks[c.name] ?? 0}
+                          onChange={(e) => {
+                            const v = Math.max(0, Math.min(Number(e.target.value) || 0, c.maxPoints));
+                            setMarks((prev) => ({ ...prev, [c.name]: v }));
+                          }}
+                        />
+                        <span className="text-sm text-muted-foreground">/ {c.maxPoints}</span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className="flex items-center justify-between border-t pt-4">
+                <Label className="text-base font-semibold flex items-center gap-2">
+                  Final Score <span className="text-muted-foreground font-normal text-sm">(out of {submission.maxScore})</span>
+                </Label>
+                <span className="text-2xl font-bold text-foreground">
+                  {rubricTotal}<span className="text-sm font-normal text-muted-foreground">/{submission.maxScore}</span>
+                </span>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <Label htmlFor="score" className="text-base font-semibold flex items-center gap-2">
+                Final Score <span className="text-muted-foreground font-normal text-sm">(out of {submission.maxScore})</span>
+              </Label>
+              <Input
+                id="score"
+                type="number"
+                className="text-2xl font-bold h-14 pl-4 w-32 border-2 focus-visible:ring-primary"
+                value={score}
+                onChange={e => setScore(e.target.value)}
+                min="0"
+                max={submission.maxScore}
+                required
+              />
+            </div>
+          )}
+
           <div className="space-y-3">
             <Label htmlFor="feedback" className="text-base font-semibold">Feedback to Student</Label>
             <Textarea 
@@ -381,8 +483,8 @@ function GradingPanel({ submission }: { submission: any }) {
           </div>
         </CardContent>
         <CardFooter className="bg-background pt-0 pb-6 px-6">
-          <Button type="submit" size="lg" className="w-full font-semibold text-md shadow-sm" disabled={gradeMutation.isPending}>
-            {gradeMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+          <Button type="submit" size="lg" className="w-full font-semibold text-md shadow-sm" disabled={gradeMutation.isPending || savingRubric}>
+            {(gradeMutation.isPending || savingRubric) && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
             Publish Grade
           </Button>
         </CardFooter>
