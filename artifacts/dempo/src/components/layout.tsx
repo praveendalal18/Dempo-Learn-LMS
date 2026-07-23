@@ -106,13 +106,16 @@ export function Shell({ children }: { children: React.ReactNode }) {
                 <span className="font-serif font-semibold">Dempo Learn</span>
               </div>
               <div className="flex-1 py-4 overflow-y-auto">
-                <nav className="space-y-1 px-2">
-                  {navigation.map((item) => (
-                    <Link key={item.name} href={item.href} className={`flex items-center gap-3 px-3 py-2 rounded-md transition-colors ${location.startsWith(item.href) ? 'bg-primary/10 text-primary font-medium' : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground'}`}>
-                      <item.icon className="w-4 h-4" />
-                      {item.name}
-                    </Link>
-                  ))}
+                <nav className="space-y-0.5 px-2">
+                  {navigation.map((item) => {
+                    const active = location.startsWith(item.href) || (location === '/' && item.href === '/dashboard');
+                    return (
+                      <Link key={item.name} href={item.href} className={`flex items-center gap-2.5 px-2.5 py-1.5 rounded-md text-sm transition-colors ${active ? 'bg-accent text-accent-foreground font-medium' : 'text-muted-foreground hover:bg-accent/70 hover:text-foreground'}`}>
+                        <item.icon className={`w-4 h-4 shrink-0 ${active ? '' : 'text-muted-foreground'}`} />
+                        {item.name}
+                      </Link>
+                    );
+                  })}
                 </nav>
               </div>
               <div className="p-4 border-t">
@@ -142,11 +145,11 @@ export function Shell({ children }: { children: React.ReactNode }) {
       </div>
 
       {/* Desktop Sidebar */}
-      <div className="hidden md:flex w-64 flex-col border-r bg-card h-screen sticky top-0 shrink-0">
-        <div className="h-16 flex items-center gap-2 px-6 border-b">
-          <img src={import.meta.env.BASE_URL + "logo.png"} alt="Dempo Learn Logo" className="w-8 h-8 rounded-md" />
-          <span className="font-serif font-bold text-xl text-primary">Dempo Learn</span>
-          <div className="ml-auto -mr-2">
+      <div className="hidden md:flex w-64 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground h-screen sticky top-0 shrink-0">
+        <div className="h-14 flex items-center gap-2 px-4">
+          <img src={import.meta.env.BASE_URL + "logo.png"} alt="Dempo Learn Logo" className="w-7 h-7 rounded-md" />
+          <span className="font-semibold text-[15px] text-foreground">Dempo Learn</span>
+          <div className="ml-auto -mr-1">
             <NotificationBell />
           </div>
         </div>
@@ -165,20 +168,20 @@ export function Shell({ children }: { children: React.ReactNode }) {
             </div>
           </div>
           
-          <nav className="space-y-1">
+          <nav className="space-y-0.5">
             {navigation.map((item) => {
               const active = location.startsWith(item.href) || (location === '/' && item.href === '/dashboard');
               return (
-                <Link 
-                  key={item.name} 
-                  href={item.href} 
-                  className={`flex items-center gap-3 px-3 py-2.5 rounded-md transition-colors ${
-                    active 
-                      ? 'bg-primary text-primary-foreground font-medium shadow-sm' 
-                      : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                <Link
+                  key={item.name}
+                  href={item.href}
+                  className={`flex items-center gap-2.5 px-2.5 py-1.5 rounded-md text-sm transition-colors ${
+                    active
+                      ? 'bg-sidebar-accent text-sidebar-accent-foreground font-medium'
+                      : 'text-sidebar-foreground hover:bg-sidebar-accent/70 hover:text-sidebar-accent-foreground'
                   }`}
                 >
-                  <item.icon className="w-4 h-4" />
+                  <item.icon className={`w-4 h-4 shrink-0 ${active ? '' : 'text-muted-foreground'}`} />
                   {item.name}
                 </Link>
               );

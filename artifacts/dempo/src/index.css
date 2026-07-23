@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;400;500;600;700&family=Outfit:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;450;500;600;700&display=swap');
 @import 'tailwindcss';
 @import 'tw-animate-css';
 @plugin "@tailwindcss/typography";
@@ -46,6 +46,15 @@
   --color-chart-4: hsl(var(--chart-4));
   --color-chart-5: hsl(var(--chart-5));
 
+  --color-success: hsl(var(--success));
+  --color-success-foreground: hsl(var(--success-foreground));
+  --color-warning: hsl(var(--warning));
+  --color-warning-foreground: hsl(var(--warning-foreground));
+  --color-danger: hsl(var(--danger));
+  --color-danger-foreground: hsl(var(--danger-foreground));
+  --color-info: hsl(var(--info));
+  --color-info-foreground: hsl(var(--info-foreground));
+
   --color-sidebar: hsl(var(--sidebar));
   --color-sidebar-foreground: hsl(var(--sidebar-foreground));
   --color-sidebar-border: hsl(var(--sidebar-border));
@@ -68,69 +77,80 @@
 }
 
 :root {
-  --button-outline: rgba(0, 0, 0, 0.1);
-  --badge-outline: rgba(0, 0, 0, 0.05);
+  --button-outline: rgba(55, 53, 47, 0.16);
+  --badge-outline: rgba(55, 53, 47, 0.12);
 
   --opaque-button-border-intensity: -8;
 
-  --elevate-1: rgba(0, 0, 0, 0.03);
-  --elevate-2: rgba(0, 0, 0, 0.08);
+  --elevate-1: rgba(55, 53, 47, 0.04);
+  --elevate-2: rgba(55, 53, 47, 0.08);
 
-  --background: 45 20% 98%;
-  --foreground: 220 30% 15%;
-  --border: 220 15% 90%;
+  /* Notion-neutral: white canvas, warm near-black ink, hairline warm-gray lines */
+  --background: 0 0% 100%;
+  --foreground: 40 8% 18%;
+  --border: 42 10% 90%;
 
   --card: 0 0% 100%;
-  --card-foreground: 220 30% 15%;
-  --card-border: 220 15% 90%;
+  --card-foreground: 40 8% 18%;
+  --card-border: 42 10% 90%;
 
-  --sidebar: 45 20% 96%;
-  --sidebar-foreground: 220 30% 25%;
-  --sidebar-border: 220 15% 88%;
-  --sidebar-primary: 220 40% 30%;
-  --sidebar-primary-foreground: 45 20% 98%;
-  --sidebar-accent: 45 30% 90%;
-  --sidebar-accent-foreground: 220 40% 30%;
-  --sidebar-ring: 220 40% 30%;
+  --sidebar: 48 12% 97%;
+  --sidebar-foreground: 40 6% 30%;
+  --sidebar-border: 42 10% 91%;
+  --sidebar-primary: 40 8% 18%;
+  --sidebar-primary-foreground: 0 0% 100%;
+  --sidebar-accent: 45 12% 93%;
+  --sidebar-accent-foreground: 40 8% 18%;
+  --sidebar-ring: 212 78% 51%;
 
   --popover: 0 0% 100%;
-  --popover-foreground: 220 30% 15%;
-  --popover-border: 220 15% 90%;
+  --popover-foreground: 40 8% 18%;
+  --popover-border: 42 10% 90%;
 
-  --primary: 220 40% 30%;
-  --primary-foreground: 45 20% 98%;
+  --primary: 40 8% 18%;
+  --primary-foreground: 0 0% 100%;
 
-  --secondary: 45 30% 90%;
-  --secondary-foreground: 220 40% 30%;
+  --secondary: 45 12% 95%;
+  --secondary-foreground: 40 8% 18%;
 
-  --muted: 220 10% 94%;
-  --muted-foreground: 220 15% 45%;
+  --muted: 48 10% 96%;
+  --muted-foreground: 40 4% 45%;
 
-  --accent: 10 50% 45%;
-  --accent-foreground: 45 20% 98%;
+  --accent: 45 12% 94%;
+  --accent-foreground: 40 8% 18%;
 
-  --destructive: 0 70% 45%;
-  --destructive-foreground: 45 20% 98%;
+  --destructive: 2 64% 52%;
+  --destructive-foreground: 0 0% 100%;
 
-  --input: 220 15% 88%;
-  --ring: 220 40% 30%;
+  --input: 42 10% 88%;
+  --ring: 212 78% 51%;
 
-  --chart-1: 220 40% 30%;
-  --chart-2: 10 50% 45%;
-  --chart-3: 150 30% 40%;
-  --chart-4: 40 40% 55%;
-  --chart-5: 280 30% 40%;
+  /* Restrained, muted chart/status hues */
+  --chart-1: 212 60% 48%;
+  --chart-2: 146 38% 42%;
+  --chart-3: 35 60% 50%;
+  --chart-4: 262 45% 55%;
+  --chart-5: 2 64% 55%;
 
-  --app-font-sans: 'Outfit', sans-serif;
-  --app-font-serif: 'Fraunces', serif;
+  --success: 146 38% 40%;
+  --success-foreground: 0 0% 100%;
+  --warning: 35 62% 46%;
+  --warning-foreground: 0 0% 100%;
+  --danger: 2 64% 52%;
+  --danger-foreground: 0 0% 100%;
+  --info: 212 72% 47%;
+  --info-foreground: 0 0% 100%;
+
+  --app-font-sans: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --app-font-serif: 'Inter', ui-sans-serif, system-ui, sans-serif;
   --app-font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
 
-  --radius: 0.75rem;
+  --radius: 0.5rem;
 
-  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
-  --shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
-  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
-  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+  --shadow-sm: 0 1px 2px 0 rgb(15 15 15 / 0.04);
+  --shadow: 0 1px 2px 0 rgb(15 15 15 / 0.05);
+  --shadow-md: 0 2px 6px -1px rgb(15 15 15 / 0.06), 0 1px 2px -1px rgb(15 15 15 / 0.05);
+  --shadow-lg: 0 8px 24px -6px rgb(15 15 15 / 0.10), 0 2px 6px -2px rgb(15 15 15 / 0.06);
 
   --primary-border: hsl(from hsl(var(--primary)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
   --secondary-border: hsl(from hsl(var(--secondary)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
@@ -140,50 +160,65 @@
 }
 
 .dark {
-  --background: 222 47% 11%;
-  --foreground: 45 20% 96%;
-  --border: 222 30% 20%;
+  --button-outline: rgba(255, 255, 255, 0.14);
+  --badge-outline: rgba(255, 255, 255, 0.12);
+  --elevate-1: rgba(255, 255, 255, 0.05);
+  --elevate-2: rgba(255, 255, 255, 0.10);
 
-  --card: 222 40% 14%;
-  --card-foreground: 45 20% 96%;
-  --card-border: 222 30% 20%;
+  /* Notion dark: #1c1c1c canvas, soft-white ink, low-contrast hairlines */
+  --background: 0 0% 11%;
+  --foreground: 0 0% 92%;
+  --border: 0 0% 20%;
 
-  --sidebar: 222 45% 10%;
-  --sidebar-foreground: 220 15% 85%;
-  --sidebar-border: 222 30% 20%;
-  --sidebar-primary: 220 40% 50%;
-  --sidebar-primary-foreground: 0 0% 100%;
-  --sidebar-accent: 222 30% 20%;
-  --sidebar-accent-foreground: 45 20% 96%;
-  --sidebar-ring: 220 40% 50%;
+  --card: 0 0% 13%;
+  --card-foreground: 0 0% 92%;
+  --card-border: 0 0% 20%;
 
-  --popover: 222 40% 14%;
-  --popover-foreground: 45 20% 96%;
-  --popover-border: 222 30% 20%;
+  --sidebar: 0 0% 9%;
+  --sidebar-foreground: 0 0% 76%;
+  --sidebar-border: 0 0% 18%;
+  --sidebar-primary: 0 0% 92%;
+  --sidebar-primary-foreground: 0 0% 12%;
+  --sidebar-accent: 0 0% 17%;
+  --sidebar-accent-foreground: 0 0% 92%;
+  --sidebar-ring: 212 78% 58%;
 
-  --primary: 220 40% 50%;
-  --primary-foreground: 0 0% 100%;
+  --popover: 0 0% 14%;
+  --popover-foreground: 0 0% 92%;
+  --popover-border: 0 0% 20%;
 
-  --secondary: 222 30% 20%;
-  --secondary-foreground: 45 20% 96%;
+  --primary: 0 0% 92%;
+  --primary-foreground: 0 0% 12%;
 
-  --muted: 222 30% 18%;
-  --muted-foreground: 220 15% 65%;
+  --secondary: 0 0% 18%;
+  --secondary-foreground: 0 0% 92%;
 
-  --accent: 10 50% 55%;
-  --accent-foreground: 0 0% 100%;
+  --muted: 0 0% 16%;
+  --muted-foreground: 0 0% 60%;
 
-  --destructive: 0 60% 45%;
+  --accent: 0 0% 18%;
+  --accent-foreground: 0 0% 92%;
+
+  --destructive: 2 60% 54%;
   --destructive-foreground: 0 0% 100%;
 
-  --input: 222 30% 20%;
-  --ring: 220 40% 50%;
+  --input: 0 0% 24%;
+  --ring: 212 78% 58%;
 
-  --chart-1: 220 40% 50%;
-  --chart-2: 10 50% 55%;
-  --chart-3: 150 30% 50%;
-  --chart-4: 40 40% 65%;
-  --chart-5: 280 30% 50%;
+  --chart-1: 212 65% 60%;
+  --chart-2: 146 40% 52%;
+  --chart-3: 35 66% 58%;
+  --chart-4: 262 50% 66%;
+  --chart-5: 2 62% 62%;
+
+  --success: 146 42% 50%;
+  --success-foreground: 0 0% 100%;
+  --warning: 35 68% 55%;
+  --warning-foreground: 0 0% 8%;
+  --danger: 2 62% 58%;
+  --danger-foreground: 0 0% 100%;
+  --info: 212 78% 62%;
+  --info-foreground: 0 0% 8%;
 }
 
 @layer base {
@@ -196,7 +231,7 @@
   }
   
   h1, h2, h3, h4, h5, h6 {
-    @apply font-serif tracking-tight;
+    @apply font-sans font-semibold tracking-tight;
   }
 }
 

@@ -10,6 +10,7 @@ import { Users, FileText, Plus, LogIn, Loader2, ArrowRight } from "lucide-react"
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
 import { getListCoursesQueryKey } from "@workspace/api-client-react";
+import { PageContainer, PageHeader } from "@/components/page";
 
 export default function CoursesPage() {
   const { data: user } = useGetMe();
@@ -17,17 +18,12 @@ export default function CoursesPage() {
   const isTeacher = user?.role === "teacher";
 
   return (
-    <div className="p-4 md:p-8 max-w-6xl mx-auto w-full animate-in fade-in slide-in-from-bottom-4 duration-500">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
-        <div>
-          <h1 className="text-3xl font-serif font-bold text-foreground">Courses</h1>
-          <p className="text-muted-foreground mt-1">
-            {isTeacher ? "Manage your classes and curriculum." : "Your enrolled classes."}
-          </p>
-        </div>
-        
-        {isTeacher ? <CreateCourseDialog /> : <JoinCourseDialog />}
-      </div>
+    <PageContainer width="wide" className="animate-in fade-in duration-300">
+      <PageHeader
+        title="Courses"
+        description={isTeacher ? "Manage your classes and curriculum." : "Your enrolled classes."}
+        actions={isTeacher ? <CreateCourseDialog /> : <JoinCourseDialog />}
+      />
 
       {isLoading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -53,7 +49,7 @@ export default function CoursesPage() {
           {isTeacher ? <CreateCourseDialog /> : <JoinCourseDialog />}
         </div>
       )}
-    </div>
+    </PageContainer>
   );
 }
 
