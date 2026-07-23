@@ -7,6 +7,11 @@ import {
   coursesTable,
   teacherInvitesTable,
   coordinatorCourseAssignmentsTable,
+  enrollmentsTable,
+  cohortMembersTable,
+  invitesTable,
+  appInvitesTable,
+  courseMaterialReadsTable,
 } from "@workspace/db";
 import { inArray } from "drizzle-orm";
 import {
@@ -530,6 +535,70 @@ router.patch(
       isAdmin: updated.isAdmin,
       createdAt: updated.createdAt,
     });
+  },
+);
+
+// DELETE /admin/users/:id — permanently remove a mistakenly-added account.
+// Cleans up their enrollments, cohort memberships, roster + allow-list
+// invites (so they can't rejoin), and material-read markers, then the user
+// row. Their Clerk login is separate; removing the allow-list invite means a
+// re-provision attempt is rejected as not-invited.
+router.delete(
+  "/admin/users/:id",
+  requireAuth,
+  requireAdmin,
+  async (req, res): Promise<void> => {
+    const targetId = req.params.id;
+    if (typeof targetId !== "string" || !targetId) {
+      res.status(400).json({ error: "Invalid user id" });
+      return;
+    }
+    if (targetId === req.userId) {
+      res.status(400).json({ error: "You cannot delete your own account" });
+      return;
+    }
+    const [target] = await db
+      .select()
+      .from(usersTable)
+      .where(eq(usersTable.id, targetId));
+    if (!target) {
+      res.status(404).json({ error: "User not found" });
+      return;
+    }
+    if (target.isAdmin) {
+      res.status(400).json({ error: "Remove admin access before deleting this account" });
+      return;
+    }
+    if (target.role === "teacher") {
+      res.status(400).json({
+        error: "Use the remove-teacher action first so their courses are handled safely",
+      });
+      return;
+    }
+
+    const email = (target.email ?? "").trim().toLowerCase();
+
+    await db.transaction(async (tx) => {
+      await tx.delete(enrollmentsTable).where(eq(enrollmentsTable.studentId, targetId));
+      await tx.delete(cohortMembersTable).where(eq(cohortMembersTable.studentId, targetId));
+      await tx.delete(courseMaterialReadsTable).where(eq(courseMaterialReadsTable.userId, targetId));
+      await tx.delete(coordinatorCourseAssignmentsTable).where(eq(coordinatorCourseAssignmentsTable.coordinatorId, targetId));
+      if (email) {
+        await tx.delete(invitesTable).where(sql`lower(${invitesTable.email}) = ${email}`);
+        await tx.delete(appInvitesTable).where(sql`lower(${appInvitesTable.email}) = ${email}`);
+      }
+      await tx.delete(usersTable).where(eq(usersTable.id, targetId));
+    });
+
+    const actor = req.localUser!;
+    void logActivity({
+      user: actor,
+      action: "user.deleted",
+      message: `Admin ${actor.email} deleted account ${target.email || targetId}`,
+      metadata: { targetUserId: targetId, targetEmail: target.email, role: target.role },
+    });
+
+    res.status(204).end();
   },
 );
 

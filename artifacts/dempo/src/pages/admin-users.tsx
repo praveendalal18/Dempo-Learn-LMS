@@ -49,7 +49,7 @@ import {
 } from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Users, ShieldCheck, GraduationCap, UserPlus, X, UserMinus, BookOpen } from "lucide-react";
+import { Loader2, Users, ShieldCheck, GraduationCap, UserPlus, X, UserMinus, BookOpen, Trash2 } from "lucide-react";
 
 const ROLES = [
   { value: "student", label: "Student" },
@@ -84,10 +84,32 @@ export default function AdminUsersPage() {
   const [search, setSearch] = useState("");
   const [inviteEmail, setInviteEmail] = useState("");
   const [removeTarget, setRemoveTarget] = useState<User | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<User | null>(null);
+  const [deleting, setDeleting] = useState(false);
   const [assignTarget, setAssignTarget] = useState<User | null>(null);
   const [selectedCourseIds, setSelectedCourseIds] = useState<number[]>([]);
   const queryClient = useQueryClient();
   const { toast } = useToast();
+
+  const confirmDelete = async () => {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    try {
+      const res = await fetch(`/api/admin/users/${deleteTarget.id}`, { method: "DELETE" });
+      if (!res.ok && res.status !== 204) {
+        let msg = res.statusText;
+        try { const j = await res.json(); msg = j?.error || msg; } catch { /* ignore */ }
+        throw new Error(msg);
+      }
+      toast({ title: "Account deleted", description: `${deleteTarget.name ?? deleteTarget.email} was removed.` });
+      queryClient.invalidateQueries({ queryKey: getListUsersQueryKey() });
+      setDeleteTarget(null);
+    } catch (err: any) {
+      toast({ title: "Couldn't delete account", description: err?.message || "Please try again.", variant: "destructive" });
+    } finally {
+      setDeleting(false);
+    }
+  };
 
   const { data: me } = useGetMe({ query: { queryKey: getGetMeQueryKey() } });
   const { data: users, isLoading } = useListUsers({
@@ -477,6 +499,18 @@ export default function AdminUsersPage() {
                               <UserMinus className="w-4 h-4 mr-1" /> Remove teacher
                             </Button>
                           )}
+                          {!isSelf && !isTeacher && !u.isAdmin && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="w-8 h-8 text-muted-foreground hover:text-destructive"
+                              onClick={() => setDeleteTarget(u)}
+                              title="Delete account"
+                              data-testid={`button-delete-user-${u.id}`}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          )}
                         </td>
                       </tr>
                     );
@@ -565,6 +599,37 @@ export default function AdminUsersPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog
+        open={!!deleteTarget}
+        onOpenChange={(open) => { if (!open && !deleting) setDeleteTarget(null); }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete this account?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {deleteTarget && (
+                <>
+                  <span className="font-medium text-foreground">{deleteTarget.name ?? deleteTarget.email}</span>{" "}
+                  will be permanently removed, along with their course enrolments, cohort memberships, and invite. They will not be able to sign in again unless re-invited. This cannot be undone.
+                </>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={deleting}
+              onClick={(e) => { e.preventDefault(); confirmDelete(); }}
+              data-testid="button-confirm-delete-user"
+            >
+              {deleting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+              Delete account
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <AlertDialog
         open={!!removeTarget}
