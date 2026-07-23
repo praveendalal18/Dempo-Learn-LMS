@@ -1,7 +1,7 @@
 import { type Request, type Response, type NextFunction } from "express";
 import { getAuth, clerkClient } from "@clerk/express";
 import { eq } from "drizzle-orm";
-import { db, usersTable, teacherInvitesTable, appInvitesTable, type User } from "@workspace/db";
+import { db, usersTable, teacherInvitesTable, appInvitesTable, cohortMembersTable, type User } from "@workspace/db";
 import { logActivity } from "../lib/activityLog";
 
 // Emails that are automatically provisioned as teacher + admin. Configured via
@@ -92,6 +92,7 @@ export async function requireAuth(
     let role = "unassigned";
     let acceptedInviteRole: string | null = null;
     let legacyTeacher = false;
+    let inviteCohortIds: number[] = [];
 
     if (admin) {
       role = "teacher";
@@ -106,6 +107,7 @@ export async function requireAuth(
       if (invite) {
         role = invite.role === "teacher" ? "teacher" : "student";
         acceptedInviteRole = role;
+        inviteCohortIds = invite.cohortIds ?? [];
       } else if (await consumeTeacherInvite(email)) {
         role = "teacher";
         legacyTeacher = true;
@@ -140,6 +142,12 @@ export async function requireAuth(
           .update(appInvitesTable)
           .set({ acceptedAt: new Date() })
           .where(eq(appInvitesTable.email, normalizedEmail));
+      }
+      for (const cid of inviteCohortIds) {
+        void db
+          .insert(cohortMembersTable)
+          .values({ cohortId: cid, studentId: user.id })
+          .onConflictDoNothing();
       }
       void logActivity({
         user,
