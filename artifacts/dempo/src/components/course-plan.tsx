@@ -99,10 +99,11 @@ function formatDayDate(ymd: string): string {
 
 const storageHref = (path: string) => import.meta.env.BASE_URL + "api/storage" + path;
 
-// Textarea that grows to fit its content (up to a cap) so long notes are
-// readable without a cramped inner scrollbar.
+// Textarea that grows to fit its content (up to a cap) so filled fields read
+// as sized cards, not cramped scroll-boxes. Re-measures after paint so it sizes
+// correctly even when it first mounts inside a hidden tab.
 function AutoTextarea({
-  value, onChange, placeholder, className = "", minHeight = 60, maxHeight = 460,
+  value, onChange, placeholder, className = "", minHeight = 96, maxHeight = 400,
 }: {
   value: string;
   onChange: (v: string) => void;
@@ -115,8 +116,13 @@ function AutoTextarea({
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
-    el.style.height = "auto";
-    el.style.height = `${Math.min(Math.max(el.scrollHeight, minHeight), maxHeight)}px`;
+    const fit = () => {
+      el.style.height = "auto";
+      el.style.height = `${Math.min(Math.max(el.scrollHeight, minHeight), maxHeight)}px`;
+    };
+    fit();
+    const raf = requestAnimationFrame(fit); // catch hidden -> visible (tab switch)
+    return () => cancelAnimationFrame(raf);
   }, [value, minHeight, maxHeight]);
   return (
     <Textarea
@@ -125,7 +131,7 @@ function AutoTextarea({
       placeholder={placeholder}
       onChange={(e) => onChange(e.target.value)}
       style={{ minHeight }}
-      className={`resize-none overflow-y-auto leading-relaxed ${className}`}
+      className={`resize-none overflow-y-auto leading-relaxed bg-card ${className}`}
     />
   );
 }
@@ -706,19 +712,19 @@ function TeacherPlanEditor({ courseId, plan, extras }: { courseId: number; plan:
                     </div>
                     {hasTitle && (
                       <div className={`mt-4 space-y-4 ${isSession ? "" : "md:pl-[68px]"}`}>
-                        <div className="space-y-1.5">
-                          <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">What students will learn</Label>
-                          <AutoTextarea placeholder="Describe what this session covers (visible to students)..." value={draft?.description || ""} onChange={(v) => setField(hour, 'description', v)} />
+                        <div className="rounded-xl border bg-card p-3 space-y-2">
+                          <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5"><BookOpen className="w-3.5 h-3.5" /> What students will learn</Label>
+                          <AutoTextarea placeholder="Describe what this session covers (visible to students)..." value={draft?.description || ""} onChange={(v) => setField(hour, 'description', v)} minHeight={110} maxHeight={520} />
                         </div>
-                        <div className="grid md:grid-cols-3 gap-3">
+                        <div className="grid md:grid-cols-3 gap-3 items-start">
                           <EditPanel icon={BookOpen} label="Pre-work" tint="sky">
-                            <AutoTextarea placeholder="Read / prepare before class..." value={draft?.preWork || ""} onChange={(v) => setField(hour, 'preWork', v)} minHeight={72} />
+                            <AutoTextarea placeholder="Read / prepare before class..." value={draft?.preWork || ""} onChange={(v) => setField(hour, 'preWork', v)} minHeight={110} maxHeight={320} />
                           </EditPanel>
                           <EditPanel icon={Briefcase} label="Case study" tint="violet">
-                            <AutoTextarea placeholder="Case or framework to discuss..." value={draft?.caseStudy || ""} onChange={(v) => setField(hour, 'caseStudy', v)} minHeight={72} />
+                            <AutoTextarea placeholder="Case or framework to discuss..." value={draft?.caseStudy || ""} onChange={(v) => setField(hour, 'caseStudy', v)} minHeight={110} maxHeight={320} />
                           </EditPanel>
                           <EditPanel icon={ClipboardList} label="Post-work" tint="amber">
-                            <AutoTextarea placeholder="Follow-up after class..." value={draft?.postWork || ""} onChange={(v) => setField(hour, 'postWork', v)} minHeight={72} />
+                            <AutoTextarea placeholder="Follow-up after class..." value={draft?.postWork || ""} onChange={(v) => setField(hour, 'postWork', v)} minHeight={110} maxHeight={320} />
                           </EditPanel>
                         </div>
                         <div className="grid md:grid-cols-2 gap-3">
