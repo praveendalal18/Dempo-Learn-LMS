@@ -30,6 +30,9 @@ import { QuizFormDialog } from "@/components/quiz-dialog";
 import { format } from "date-fns";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { CoursePlanView } from "@/components/course-plan";
+import { AnalyticsPanel } from "@/components/analytics-panel";
+import { CourseFeedbackDialog } from "@/components/course-feedback-dialog";
+import { BarChart3, Star } from "lucide-react";
 import { TeacherProfileDialog } from "@/components/teacher-profile-dialog";
 import { CourseProgressView, LeaderboardView } from "@/components/course-progress";
 import { CourseMaterialsView } from "@/components/course-materials";
@@ -52,6 +55,7 @@ export default function CourseViewPage({ id }: { id: string }) {
   const { toast } = useToast();
   const [teacherProfileOpen, setTeacherProfileOpen] = useState(false);
   const [editCourseOpen, setEditCourseOpen] = useState(false);
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
   const [activeTab, setActiveTab] = useState(() => {
     const tab = new URLSearchParams(window.location.search).get("tab");
     return tab || "assignments";
@@ -156,16 +160,26 @@ export default function CourseViewPage({ id }: { id: string }) {
               </div>
             )}
             
-            <Button variant="outline" size="sm" asChild className="ml-auto">
-              <Link href={`/messages?courseId=${course.id}`}>
-                <div className="flex items-center">
-                  <Mail className="w-4 h-4 mr-2" />
-                  Course Messages
-                </div>
-              </Link>
-            </Button>
+            <div className="ml-auto flex items-center gap-2">
+              {!isTeacher && (
+                <Button variant="outline" size="sm" onClick={() => setFeedbackOpen(true)}>
+                  <Star className="w-4 h-4 mr-2" /> Rate course
+                </Button>
+              )}
+              <Button variant="outline" size="sm" asChild>
+                <Link href={`/messages?courseId=${course.id}`}>
+                  <div className="flex items-center">
+                    <Mail className="w-4 h-4 mr-2" />
+                    Course Messages
+                  </div>
+                </Link>
+              </Button>
+            </div>
           </div>
         </div>
+        {!isTeacher && (
+          <CourseFeedbackDialog courseId={courseId} open={feedbackOpen} onOpenChange={setFeedbackOpen} />
+        )}
       </div>
 
       <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
@@ -213,6 +227,11 @@ export default function CourseViewPage({ id }: { id: string }) {
           {isTeacher && course.teacherId === user?.id && (
             <TabsTrigger value="integrity" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-6 h-full font-medium">
               Integrity
+            </TabsTrigger>
+          )}
+          {isTeacher && course.teacherId === user?.id && (
+            <TabsTrigger value="analytics" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-6 h-full font-medium">
+              Analytics
             </TabsTrigger>
           )}
         </TabsList>
@@ -292,6 +311,12 @@ export default function CourseViewPage({ id }: { id: string }) {
         {isTeacher && course.teacherId === user?.id && (
           <TabsContent value="integrity">
             <CourseIntegrityView courseId={courseId} />
+          </TabsContent>
+        )}
+
+        {isTeacher && course.teacherId === user?.id && (
+          <TabsContent value="analytics">
+            <AnalyticsPanel courseId={courseId} />
           </TabsContent>
         )}
       </Tabs>

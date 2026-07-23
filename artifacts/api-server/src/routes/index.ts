@@ -20,6 +20,9 @@ import groupsRouter from "./groups";
 import journalRouter from "./journal";
 import invitesRouter from "./invites";
 import planRouter from "./plan";
+import attendanceRouter from "./attendance";
+import courseFeedbackRouter from "./courseFeedback";
+import analyticsRouter from "./analytics";
 
 const router: IRouter = Router();
 
@@ -44,5 +47,8 @@ router.use(groupsRouter);
 router.use(journalRouter);
 router.use(invitesRouter);
 router.use(planRouter);
+router.use(attendanceRouter);
+router.use(courseFeedbackRouter);
+router.use(analyticsRouter);
 
 export default router;

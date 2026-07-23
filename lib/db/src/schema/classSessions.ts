@@ -4,6 +4,7 @@ import {
   serial,
   timestamp,
   integer,
+  uniqueIndex,
 } from "drizzle-orm/pg-core";
 
 export const classSessionsTable = pgTable("class_sessions", {
@@ -20,3 +21,22 @@ export const classSessionsTable = pgTable("class_sessions", {
 });
 
 export type ClassSession = typeof classSessionsTable.$inferSelect;
+
+// Attendance: one row per (session, student). status = present|absent|late|excused.
+export const attendanceTable = pgTable(
+  "attendance",
+  {
+    id: serial("id").primaryKey(),
+    sessionId: integer("session_id").notNull(),
+    courseId: integer("course_id").notNull(),
+    studentId: text("student_id").notNull(),
+    status: text("status").notNull().default("present"),
+    markedBy: text("marked_by"),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [uniqueIndex("attendance_session_student_idx").on(t.sessionId, t.studentId)],
+);
+
+export type Attendance = typeof attendanceTable.$inferSelect;

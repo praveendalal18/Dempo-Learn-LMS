@@ -42,6 +42,8 @@ import AdminInvitesPage from "@/pages/admin-invites";
 import OversightPage from "@/pages/oversight";
 import CoordinatorPage from "@/pages/coordinator";
 import FeedbackPage from "@/pages/feedback";
+import AnalyticsPage from "@/pages/analytics";
+import AnalyticsCoursePage from "@/pages/analytics-course";
 
 function ProtectedRoute({ component: Component, ...rest }: any) {
   const { isLoaded, isSignedIn } = useAuth();
@@ -118,6 +120,21 @@ export function AppRouter() {
             component={FeedbackPage}
             roles={["dean", "course_coordinator", "teacher"]}
           />
+        </Route>
+        <Route path="/analytics">
+          <ProtectedRoute
+            component={AnalyticsPage}
+            roles={["teacher", "dean", "course_coordinator"]}
+          />
+        </Route>
+        <Route path="/analytics/course/:id">
+          {params => (
+            <ProtectedRoute
+              component={AnalyticsCoursePage}
+              id={params.id}
+              roles={["teacher", "dean", "course_coordinator"]}
+            />
+          )}
         </Route>
 
         {/* Courses */}

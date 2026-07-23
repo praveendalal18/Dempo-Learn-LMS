@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   useListClassSessions,
   getListClassSessionsQueryKey,
@@ -17,11 +17,14 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
 } from "@/components/ui/dialog";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
 import { format, isPast } from "date-fns";
@@ -33,7 +36,17 @@ import {
   Loader2,
   MapPin,
   Video,
+  ClipboardCheck,
 } from "lucide-react";
+
+type AttendanceStatus = "present" | "absent" | "late" | "excused";
+
+const ATTENDANCE_OPTIONS: { value: AttendanceStatus; label: string }[] = [
+  { value: "present", label: "Present" },
+  { value: "late", label: "Late" },
+  { value: "absent", label: "Absent" },
+  { value: "excused", label: "Excused" },
+];
 
 function isUrl(s: string | null | undefined): boolean {
   return !!s && /^https?:\/\//i.test(s);
@@ -57,6 +70,7 @@ export function CourseSchedule({
   const [editing, setEditing] = useState<ClassSession | null>(null);
   const [creating, setCreating] = useState(false);
   const [toDelete, setToDelete] = useState<ClassSession | null>(null);
+  const [attendanceFor, setAttendanceFor] = useState<ClassSession | null>(null);
   const deleteSession = useDeleteClassSession();
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -154,6 +168,10 @@ export function CourseSchedule({
                           </div>
                           {isTeacher && (
                             <div className="flex gap-1 shrink-0">
+                              <Button variant="ghost" size="sm" className="h-8 gap-1.5" onClick={() => setAttendanceFor(s)} title="Take attendance">
+                                <ClipboardCheck className="w-4 h-4 text-muted-foreground" />
+                                <span className="hidden sm:inline">Attendance</span>
+                              </Button>
                               <Button variant="ghost" size="icon" className="w-8 h-8" onClick={() => setEditing(s)} title="Edit session">
                                 <Pencil className="w-4 h-4" />
                               </Button>
@@ -178,6 +196,14 @@ export function CourseSchedule({
           session={editing}
           onClose={() => { setCreating(false); setEditing(null); }}
           onSaved={() => { refresh(); setCreating(false); setEditing(null); }}
+        />
+      )}
+
+      {isTeacher && attendanceFor && (
+        <AttendanceDialog
+          courseId={courseId}
+          session={attendanceFor}
+          onClose={() => setAttendanceFor(null)}
         />
       )}
 
@@ -298,6 +324,222 @@ function SessionDialog({
             </Button>
           </div>
         </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+type AttendanceStudent = {
+  id: number | string;
+  name: string;
+  email: string;
+  avatarUrl: string | null;
+  status: AttendanceStatus | null;
+};
+
+function initials(name: string): string {
+  return name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((p) => p[0]?.toUpperCase() ?? "")
+    .join("");
+}
+
+function AttendanceDialog({
+  courseId,
+  session,
+  onClose,
+}: {
+  courseId: number;
+  session: ClassSession;
+  onClose: () => void;
+}) {
+  const { toast } = useToast();
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [canEdit, setCanEdit] = useState(false);
+  const [students, setStudents] = useState<AttendanceStudent[]>([]);
+  const [statuses, setStatuses] = useState<Record<string, AttendanceStatus>>({});
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    fetch(`/api/courses/${courseId}/sessions/${session.id}/attendance`, {
+      credentials: "same-origin",
+    })
+      .then(async (res) => {
+        if (!res.ok) throw new Error(`Request failed (${res.status})`);
+        return res.json();
+      })
+      .then((data) => {
+        if (cancelled) return;
+        const roster: AttendanceStudent[] = data?.students ?? [];
+        setStudents(roster);
+        setCanEdit(!!data?.canEdit);
+        // Default any null status to "present" in the UI.
+        setStatuses(
+          Object.fromEntries(
+            roster.map((s) => [String(s.id), s.status ?? "present"]),
+          ),
+        );
+      })
+      .catch((err: any) => {
+        if (cancelled) return;
+        toast({ title: "Could not load attendance", description: err?.message, variant: "destructive" });
+        onClose();
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [courseId, session.id]);
+
+  const setStatus = (studentId: string, status: AttendanceStatus) =>
+    setStatuses((prev) => ({ ...prev, [studentId]: status }));
+
+  const markAllPresent = () =>
+    setStatuses(Object.fromEntries(students.map((s) => [String(s.id), "present" as AttendanceStatus])));
+
+  const counts = ATTENDANCE_OPTIONS.reduce(
+    (acc, o) => {
+      acc[o.value] = students.filter((s) => statuses[String(s.id)] === o.value).length;
+      return acc;
+    },
+    {} as Record<AttendanceStatus, number>,
+  );
+
+  const summaryParts = ATTENDANCE_OPTIONS
+    .filter((o) => counts[o.value] > 0)
+    .map((o) => `${counts[o.value]} ${o.label.toLowerCase()}`);
+
+  const handleSave = () => {
+    setSaving(true);
+    const records = students.map((s) => ({
+      studentId: s.id,
+      status: statuses[String(s.id)] ?? "present",
+    }));
+    fetch(`/api/courses/${courseId}/sessions/${session.id}/attendance`, {
+      method: "PUT",
+      credentials: "same-origin",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ records }),
+    })
+      .then(async (res) => {
+        if (!res.ok) throw new Error(`Request failed (${res.status})`);
+      })
+      .then(() => {
+        toast({ title: "Attendance saved" });
+        onClose();
+      })
+      .catch((err: any) => {
+        toast({ title: "Could not save attendance", description: err?.message, variant: "destructive" });
+      })
+      .finally(() => setSaving(false));
+  };
+
+  return (
+    <Dialog open onOpenChange={(o) => { if (!o) onClose(); }}>
+      <DialogContent className="sm:max-w-[520px]">
+        <DialogHeader>
+          <DialogTitle className="font-serif text-2xl">Attendance</DialogTitle>
+          <DialogDescription>{session.title}</DialogDescription>
+        </DialogHeader>
+
+        {loading ? (
+          <div className="py-12 flex justify-center">
+            <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+          </div>
+        ) : (
+          <>
+            <div className="flex items-center justify-between gap-3 pt-1">
+              <p className="text-sm text-muted-foreground" aria-live="polite">
+                {students.length === 0
+                  ? "No students enrolled"
+                  : summaryParts.join(" · ")}
+              </p>
+              {canEdit && students.length > 0 && (
+                <Button variant="outline" size="sm" onClick={markAllPresent}>
+                  Mark all present
+                </Button>
+              )}
+            </div>
+
+            <div className="space-y-1 max-h-[45vh] overflow-y-auto -mx-1 px-1">
+              {students.length === 0 ? (
+                <div className="py-8 text-center text-sm text-muted-foreground">
+                  There are no enrolled students to mark.
+                </div>
+              ) : (
+                students.map((s) => {
+                  const current = statuses[String(s.id)] ?? "present";
+                  return (
+                    <div key={s.id} className="flex items-center gap-3 py-2 border-b last:border-b-0">
+                      <Avatar className="h-8 w-8">
+                        {s.avatarUrl && <AvatarImage src={s.avatarUrl} alt={s.name} />}
+                        <AvatarFallback className="text-xs">{initials(s.name)}</AvatarFallback>
+                      </Avatar>
+                      <div className="min-w-0 flex-1">
+                        <div className="text-sm font-medium truncate">{s.name}</div>
+                        <div className="text-xs text-muted-foreground truncate">{s.email}</div>
+                      </div>
+                      <div
+                        role="group"
+                        aria-label={`Attendance for ${s.name}`}
+                        className="flex shrink-0 rounded-md border p-0.5"
+                      >
+                        {ATTENDANCE_OPTIONS.map((o) => {
+                          const selected = current === o.value;
+                          return (
+                            <button
+                              key={o.value}
+                              type="button"
+                              disabled={!canEdit}
+                              aria-pressed={selected}
+                              onClick={() => setStatus(String(s.id), o.value)}
+                              className={`px-2 py-1 text-xs rounded-[5px] transition-colors disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-ring ${
+                                selected
+                                  ? "bg-secondary text-secondary-foreground font-medium"
+                                  : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                              }`}
+                            >
+                              {o.label}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+
+            <div className="flex items-center justify-between gap-2 pt-4 border-t">
+              {students.length > 0 ? (
+                <div className="flex flex-wrap gap-1.5">
+                  {counts.present > 0 && <Badge variant="success">{counts.present} present</Badge>}
+                  {counts.late > 0 && <Badge variant="warning">{counts.late} late</Badge>}
+                  {counts.absent > 0 && <Badge variant="danger">{counts.absent} absent</Badge>}
+                  {counts.excused > 0 && <Badge variant="info">{counts.excused} excused</Badge>}
+                </div>
+              ) : (
+                <span />
+              )}
+              <div className="flex gap-2">
+                <Button type="button" variant="outline" onClick={onClose} disabled={saving}>
+                  {canEdit ? "Cancel" : "Close"}
+                </Button>
+                {canEdit && (
+                  <Button type="button" onClick={handleSave} disabled={saving || students.length === 0}>
+                    {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                    Save attendance
+                  </Button>
+                )}
+              </div>
+            </div>
+          </>
+        )}
       </DialogContent>
     </Dialog>
   );
