@@ -1,4 +1,5 @@
 import { Router, type IRouter } from "express";
+import { z } from "zod";
 import { eq, and, inArray, desc } from "drizzle-orm";
 import {
   db,
@@ -7,6 +8,7 @@ import {
   invitesTable,
   usersTable,
   coursePlanItemsTable,
+  cohortMembersTable,
 } from "@workspace/db";
 import {
   CreateCourseBody,
@@ -122,6 +124,211 @@ router.post("/courses", requireAuth, async (req, res): Promise<void> => {
   res.status(201).json(CreateCourseResponse.parse(await enrichCourse(course)));
 });
 
+// Inline (non-generated) course rename/edit — teacher-only. Kept out of the
+// orval contract to avoid a regen; the web app calls it with a raw fetch.
+const UpdateCourseInline = z.object({
+  title: z.string().trim().min(1, "Title is required").max(160).optional(),
+  description: z.string().trim().max(2000).nullable().optional(),
+});
+
+router.patch("/courses/:courseId", requireAuth, async (req, res): Promise<void> => {
+  const courseId = Number(req.params.courseId);
+  if (!Number.isInteger(courseId)) {
+    res.status(400).json({ error: "Invalid course id" });
+    return;
+  }
+  const course = await getCourse(courseId);
+  if (!course) {
+    res.status(404).json({ error: "Course not found" });
+    return;
+  }
+  if (!isCourseTeacher(course, req.localUser!)) {
+    res.status(403).json({ error: "Only the course teacher can edit this course" });
+    return;
+  }
+  const parsed = UpdateCourseInline.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+  const patch: { title?: string; description?: string | null } = {};
+  if (parsed.data.title !== undefined) patch.title = parsed.data.title;
+  if (parsed.data.description !== undefined) patch.description = parsed.data.description;
+  if (Object.keys(patch).length === 0) {
+    res.status(400).json({ error: "Nothing to update" });
+    return;
+  }
+
+  const [updated] = await db
+    .update(coursesTable)
+    .set(patch)
+    .where(eq(coursesTable.id, courseId))
+    .returning();
+
+  void logActivity({
+    user: req.localUser!,
+    action: "course.updated",
+    message: `${req.localUser!.email} edited course "${updated.title}"`,
+    metadata: { courseId },
+  });
+
+  res.json(await enrichCourse(updated));
+});
+
+// Inline: platform student directory for a course's "Add students" panel.
+// Returns every student with an `enrolled` flag for this course. Teacher-only
+// (course owner). Kept out of the orval contract to avoid a regen.
+router.get("/courses/:courseId/enroll-candidates", requireAuth, async (req, res): Promise<void> => {
+  const courseId = Number(req.params.courseId);
+  if (!Number.isInteger(courseId)) {
+    res.status(400).json({ error: "Invalid course id" });
+    return;
+  }
+  const course = await getCourse(courseId);
+  if (!course) {
+    res.status(404).json({ error: "Course not found" });
+    return;
+  }
+  if (!isCourseTeacher(course, req.localUser!)) {
+    res.status(403).json({ error: "Only the course teacher can view this" });
+    return;
+  }
+
+  const enrolled = await db
+    .select({ studentId: enrollmentsTable.studentId })
+    .from(enrollmentsTable)
+    .where(eq(enrollmentsTable.courseId, courseId));
+  const enrolledIds = new Set(enrolled.map((e) => e.studentId));
+
+  const students = await db
+    .select({
+      id: usersTable.id,
+      name: usersTable.name,
+      email: usersTable.email,
+      avatarUrl: usersTable.avatarUrl,
+    })
+    .from(usersTable)
+    .where(eq(usersTable.role, "student"))
+    .orderBy(usersTable.name);
+
+  res.json(
+    students.map((s) => ({ ...s, enrolled: enrolledIds.has(s.id) })),
+  );
+});
+
+// Inline: teacher directly enrolls one or more students into their course
+// (no invite code needed on the student's side).
+const EnrollBody = z.object({ studentIds: z.array(z.string().min(1)).min(1).max(500) });
+
+router.post("/courses/:courseId/enroll", requireAuth, async (req, res): Promise<void> => {
+  const courseId = Number(req.params.courseId);
+  if (!Number.isInteger(courseId)) {
+    res.status(400).json({ error: "Invalid course id" });
+    return;
+  }
+  const course = await getCourse(courseId);
+  if (!course) {
+    res.status(404).json({ error: "Course not found" });
+    return;
+  }
+  if (!isCourseTeacher(course, req.localUser!)) {
+    res.status(403).json({ error: "Only the course teacher can add students" });
+    return;
+  }
+  const parsed = EnrollBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+
+  // Only enroll real students; ignore ids that aren't students.
+  const ids = Array.from(new Set(parsed.data.studentIds));
+  const validStudents = await db
+    .select({ id: usersTable.id })
+    .from(usersTable)
+    .where(and(inArray(usersTable.id, ids), eq(usersTable.role, "student")));
+  const validIds = new Set(validStudents.map((s) => s.id));
+
+  const already = await db
+    .select({ studentId: enrollmentsTable.studentId })
+    .from(enrollmentsTable)
+    .where(eq(enrollmentsTable.courseId, courseId));
+  const alreadyIds = new Set(already.map((e) => e.studentId));
+
+  const toInsert = ids
+    .filter((id) => validIds.has(id) && !alreadyIds.has(id))
+    .map((studentId) => ({ courseId, studentId }));
+
+  if (toInsert.length) {
+    await db.insert(enrollmentsTable).values(toInsert);
+    void logActivity({
+      user: req.localUser!,
+      action: "course.enrolled",
+      message: `${req.localUser!.email} enrolled ${toInsert.length} student(s) into "${course.title}"`,
+      metadata: { courseId, count: toInsert.length },
+    });
+  }
+
+  res.json({ enrolled: toInsert.length, skipped: ids.length - toInsert.length });
+});
+
+// Inline: enroll every member of a cohort into the course directly.
+const EnrollCohortBody = z.object({ cohortId: z.number().int().positive() });
+
+router.post("/courses/:courseId/enroll-cohort", requireAuth, async (req, res): Promise<void> => {
+  const courseId = Number(req.params.courseId);
+  if (!Number.isInteger(courseId)) {
+    res.status(400).json({ error: "Invalid course id" });
+    return;
+  }
+  const course = await getCourse(courseId);
+  if (!course) {
+    res.status(404).json({ error: "Course not found" });
+    return;
+  }
+  if (!isCourseTeacher(course, req.localUser!)) {
+    res.status(403).json({ error: "Only the course teacher can add students" });
+    return;
+  }
+  const parsed = EnrollCohortBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+
+  const members = await db
+    .select({ studentId: cohortMembersTable.studentId })
+    .from(cohortMembersTable)
+    .where(eq(cohortMembersTable.cohortId, parsed.data.cohortId));
+  const memberIds = members.map((m) => m.studentId);
+  if (memberIds.length === 0) {
+    res.json({ enrolled: 0, skipped: 0 });
+    return;
+  }
+
+  const already = await db
+    .select({ studentId: enrollmentsTable.studentId })
+    .from(enrollmentsTable)
+    .where(eq(enrollmentsTable.courseId, courseId));
+  const alreadyIds = new Set(already.map((e) => e.studentId));
+
+  const toInsert = Array.from(new Set(memberIds))
+    .filter((id) => !alreadyIds.has(id))
+    .map((studentId) => ({ courseId, studentId }));
+
+  if (toInsert.length) {
+    await db.insert(enrollmentsTable).values(toInsert);
+    void logActivity({
+      user: req.localUser!,
+      action: "course.enrolled_cohort",
+      message: `${req.localUser!.email} enrolled a cohort (${toInsert.length}) into "${course.title}"`,
+      metadata: { courseId, cohortId: parsed.data.cohortId, count: toInsert.length },
+    });
+  }
+
+  res.json({ enrolled: toInsert.length, skipped: memberIds.length - toInsert.length });
+});
+
 router.post("/courses/join", requireAuth, async (req, res): Promise<void> => {
   const parsed = JoinCourseBody.safeParse(req.body);
   if (!parsed.success) {
@@ -146,22 +353,9 @@ router.post("/courses/join", requireAuth, async (req, res): Promise<void> => {
     return;
   }
 
-  // Roster gate: only students the teacher added (by email) may join.
-  const email = (req.localUser!.email ?? "").trim().toLowerCase();
-  const roster = await db
-    .select()
-    .from(invitesTable)
-    .where(eq(invitesTable.courseId, course.id));
-  const onRoster = roster.some(
-    (invite) => invite.email.trim().toLowerCase() === email,
-  );
-  if (!onRoster) {
-    res.status(403).json({
-      error:
-        "Your email is not on the roster for this course. Ask your professor to add you.",
-    });
-    return;
-  }
+  // Access to the platform is already invite-only (only admin-approved
+  // emails can sign in), so a valid invite code is sufficient to join —
+  // no separate per-course email roster is required.
 
   const [existing] = await db
     .select()

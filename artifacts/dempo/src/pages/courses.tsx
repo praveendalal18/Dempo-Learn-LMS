@@ -180,7 +180,7 @@ function JoinCourseDialog() {
         const serverMsg = err?.response?.data?.error;
         const description =
           status === 403
-            ? (serverMsg || "Your email isn't on this course's roster. Ask your professor to add you.")
+            ? (serverMsg || "You can't join this course with that account.")
             : status === 404
             ? "That invite code doesn't match any course."
             : (serverMsg || "Could not join the course. Please try again.");

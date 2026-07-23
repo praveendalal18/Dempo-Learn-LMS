@@ -21,8 +21,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { useQueryClient } from "@tanstack/react-query";
-import { getGetCourseQueryKey, getListAssignmentsQueryKey, getListCourseStudentsQueryKey, getListInvitesQueryKey } from "@workspace/api-client-react";
+import { useQueryClient, useQuery } from "@tanstack/react-query";
+import { getGetCourseQueryKey, getListAssignmentsQueryKey, getListCourseStudentsQueryKey, getListInvitesQueryKey, getListCoursesQueryKey } from "@workspace/api-client-react";
 import { FileText, Users, Mail, Clock, ArrowRight, Plus, Loader2, Link as LinkIcon, Video, Music, Copy, Trash2, Paperclip, X, ListChecks } from "lucide-react";
 import { QuizFormDialog } from "@/components/quiz-dialog";
 import { format } from "date-fns";
@@ -49,6 +49,7 @@ export default function CourseViewPage({ id }: { id: string }) {
   
   const { toast } = useToast();
   const [teacherProfileOpen, setTeacherProfileOpen] = useState(false);
+  const [editCourseOpen, setEditCourseOpen] = useState(false);
   const [activeTab, setActiveTab] = useState(() => {
     const tab = new URLSearchParams(window.location.search).get("tab");
     return tab || "assignments";
@@ -99,8 +100,30 @@ export default function CourseViewPage({ id }: { id: string }) {
               {isTeacher ? 'Instructor View' : 'Student View'}
             </span>
           </div>
-          <h1 className="text-2xl md:text-4xl font-serif font-bold text-foreground mb-3">{course.title}</h1>
+          <div className="flex items-start gap-3 mb-3">
+            <h1 className="text-2xl md:text-4xl font-serif font-bold text-foreground">{course.title}</h1>
+            {isTeacher && course.teacherId === user?.id && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 shrink-0 mt-1 text-muted-foreground hover:text-primary"
+                onClick={() => setEditCourseOpen(true)}
+                title="Edit course name"
+              >
+                <Pencil className="w-4 h-4" />
+              </Button>
+            )}
+          </div>
           {course.description && <p className="text-lg text-muted-foreground max-w-2xl">{course.description}</p>}
+          {isTeacher && course.teacherId === user?.id && (
+            <EditCourseDialog
+              courseId={courseId}
+              open={editCourseOpen}
+              onOpenChange={setEditCourseOpen}
+              initialTitle={course.title}
+              initialDescription={course.description ?? ""}
+            />
+          )}
           
           <div className="flex flex-wrap items-center gap-6 mt-8 pt-6 border-t border-border/50">
             <button
@@ -883,53 +906,117 @@ function RosterView({ courseId }: { courseId: number }) {
       <div>
         <h2 className="text-xl font-serif font-semibold mb-4">Add Students</h2>
         <Card className="shadow-sm">
-          <CardContent className="p-6">
-            <form onSubmit={handleInvite} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="email">Email Address</Label>
-                <Input id="email" type="email" placeholder="student@example.com" value={email} onChange={e => setEmail(e.target.value)} required />
-                <p className="text-xs text-muted-foreground">Any email provider works (e.g. Gmail). Only students you add here can join with the course code, and they must sign in with this exact email.</p>
-              </div>
-              <Button type="submit" className="w-full" disabled={inviteStudent.isPending || !email.trim()}>
-                {inviteStudent.isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Mail className="w-4 h-4 mr-2" />}
-                Add to Roster
-              </Button>
-            </form>
-
+          <CardContent className="p-6 space-y-6">
+            <AddStudentsPanel courseId={courseId} />
             <InviteCohortSection courseId={courseId} />
-
-            <div className="mt-6 pt-6 border-t">
-              <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">
-                Roster ({roster?.length || 0})
-              </h3>
-              {roster && roster.length > 0 ? (
-                <ul className="space-y-2">
-                  {roster.map(invite => {
-                    const joined = enrolledEmails.has((invite.email || "").toLowerCase());
-                    return (
-                      <li key={invite.id} className="flex items-center justify-between gap-2 text-sm">
-                        <span className="truncate">{invite.email}</span>
-                        <div className="flex items-center gap-2 shrink-0">
-                          <span className={`text-xs px-2 py-0.5 rounded-full ${joined ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground'}`}>
-                            {joined ? 'Joined' : 'Pending'}
-                          </span>
-                          <Button type="button" variant="ghost" size="icon" className="w-7 h-7 text-muted-foreground hover:text-destructive" onClick={() => handleRemove(invite.id, invite.email)} disabled={removeInvite.isPending}>
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
-                        </div>
-                      </li>
-                    );
-                  })}
-                </ul>
-              ) : (
-                <p className="text-sm text-muted-foreground">No students added yet. Add emails above so they can join.</p>
-              )}
-            </div>
           </CardContent>
         </Card>
+        <p className="text-xs text-muted-foreground mt-3 px-1">
+          Students appear here once an admin has invited them to Dempo. Add them to your course directly — no code needed — or they can self-join with the invite code.
+        </p>
       </div>
     </div>
     </>
+  );
+}
+
+type EnrollCandidate = { id: string; name: string | null; email: string; avatarUrl: string | null; enrolled: boolean };
+
+function AddStudentsPanel({ courseId }: { courseId: number }) {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const [search, setSearch] = useState("");
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [enrolling, setEnrolling] = useState(false);
+
+  const { data: candidates, isLoading } = useQuery({
+    queryKey: ["enroll-candidates", courseId],
+    queryFn: async (): Promise<EnrollCandidate[]> => {
+      const res = await fetch(`/api/courses/${courseId}/enroll-candidates`, { headers: { "Content-Type": "application/json" } });
+      if (!res.ok) throw new Error("Could not load students");
+      return res.json();
+    },
+    enabled: !!courseId,
+  });
+
+  const q = search.trim().toLowerCase();
+  const available = (candidates ?? []).filter((c) => !c.enrolled);
+  const filtered = available.filter(
+    (c) => !q || (c.name || "").toLowerCase().includes(q) || c.email.toLowerCase().includes(q),
+  );
+
+  const toggle = (id: string) =>
+    setSelected((s) => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n; });
+
+  const enroll = async () => {
+    if (selected.size === 0) return;
+    setEnrolling(true);
+    try {
+      const res = await fetch(`/api/courses/${courseId}/enroll`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ studentIds: Array.from(selected) }),
+      });
+      if (!res.ok) {
+        let msg = res.statusText;
+        try { const j = await res.json(); msg = j?.error || msg; } catch { /* ignore */ }
+        throw new Error(msg);
+      }
+      const r = await res.json();
+      toast({ title: "Students added", description: `${r.enrolled} enrolled${r.skipped ? `, ${r.skipped} skipped` : ""}.` });
+      setSelected(new Set());
+      queryClient.invalidateQueries({ queryKey: ["enroll-candidates", courseId] });
+      queryClient.invalidateQueries({ queryKey: getListCourseStudentsQueryKey(courseId) });
+    } catch (err: any) {
+      toast({ title: "Could not add students", description: err?.message || "Please try again.", variant: "destructive" });
+    } finally {
+      setEnrolling(false);
+    }
+  };
+
+  return (
+    <div className="space-y-3">
+      <div className="relative">
+        <Input placeholder="Search students by name or email" value={search} onChange={(e) => setSearch(e.target.value)} className="pl-3" />
+      </div>
+
+      {isLoading ? (
+        <div className="py-6 text-center"><Loader2 className="w-5 h-5 animate-spin mx-auto text-primary" /></div>
+      ) : filtered.length > 0 ? (
+        <div className="max-h-72 overflow-y-auto rounded-lg border divide-y">
+          {filtered.map((c) => {
+            const on = selected.has(c.id);
+            return (
+              <button
+                key={c.id}
+                type="button"
+                onClick={() => toggle(c.id)}
+                className={`w-full flex items-center gap-3 p-2.5 text-left transition-colors ${on ? "bg-primary/5" : "hover:bg-muted/50"}`}
+              >
+                <Checkbox checked={on} className="pointer-events-none" />
+                <Avatar className="w-8 h-8 border shrink-0">
+                  <AvatarImage src={c.avatarUrl || ""} />
+                  <AvatarFallback className="bg-primary/5 text-xs">{c.name?.charAt(0) || "S"}</AvatarFallback>
+                </Avatar>
+                <div className="min-w-0 flex-1">
+                  <div className="text-sm font-medium truncate">{c.name || c.email}</div>
+                  {c.name && <div className="text-xs text-muted-foreground truncate">{c.email}</div>}
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      ) : (
+        <p className="text-sm text-muted-foreground py-4 text-center">
+          {available.length === 0 ? "Everyone available is already enrolled." : "No students match your search."}
+        </p>
+      )}
+
+      <Button className="w-full" onClick={enroll} disabled={selected.size === 0 || enrolling}>
+        {enrolling ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Plus className="w-4 h-4 mr-2" />}
+        {selected.size > 0 ? `Add ${selected.size} student${selected.size === 1 ? "" : "s"}` : "Add students"}
+      </Button>
+    </div>
   );
 }
 
@@ -937,32 +1024,44 @@ function InviteCohortSection({ courseId }: { courseId: number }) {
   const { data: cohorts } = useListCohorts(undefined, {
     query: { queryKey: getListCohortsQueryKey(undefined) },
   });
-  const inviteCohort = useInviteCohort();
   const [cohortId, setCohortId] = useState<string>("");
+  const [pending, setPending] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
   if (!cohorts || cohorts.length === 0) return null;
 
-  const handleInvite = () => {
+  const handleInvite = async () => {
     if (!cohortId) return;
-    inviteCohort.mutate({ courseId, data: { cohortId: parseInt(cohortId, 10) } }, {
-      onSuccess: (result) => {
-        toast({
-          title: "Cohort added to roster",
-          description: `${result.added} added, ${result.skipped} already on the roster.`,
-        });
-        setCohortId("");
-        queryClient.invalidateQueries({ queryKey: getListInvitesQueryKey(courseId) });
-      },
-      onError: (err: any) => {
-        toast({ title: "Could not add cohort", description: err?.response?.data?.error || err?.message, variant: "destructive" });
-      },
-    });
+    setPending(true);
+    try {
+      const res = await fetch(`/api/courses/${courseId}/enroll-cohort`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ cohortId: parseInt(cohortId, 10) }),
+      });
+      if (!res.ok) {
+        let msg = res.statusText;
+        try { const j = await res.json(); msg = j?.error || msg; } catch { /* ignore */ }
+        throw new Error(msg);
+      }
+      const result = await res.json();
+      toast({
+        title: "Cohort enrolled",
+        description: `${result.enrolled} enrolled${result.skipped ? `, ${result.skipped} already in the course` : ""}.`,
+      });
+      setCohortId("");
+      queryClient.invalidateQueries({ queryKey: getListCourseStudentsQueryKey(courseId) });
+      queryClient.invalidateQueries({ queryKey: ["enroll-candidates", courseId] });
+    } catch (err: any) {
+      toast({ title: "Could not enroll cohort", description: err?.message, variant: "destructive" });
+    } finally {
+      setPending(false);
+    }
   };
 
   return (
-    <div className="mt-6 pt-6 border-t space-y-2">
+    <div className="pt-6 border-t space-y-2">
       <Label>Add a whole cohort</Label>
       <div className="flex gap-2">
         <Select value={cohortId} onValueChange={setCohortId}>
@@ -977,11 +1076,88 @@ function InviteCohortSection({ courseId }: { courseId: number }) {
             ))}
           </SelectContent>
         </Select>
-        <Button type="button" onClick={handleInvite} disabled={!cohortId || inviteCohort.isPending}>
-          {inviteCohort.isPending ? <Loader2 className="w-4 h-4" /> : <Users className="w-4 h-4" />}
+        <Button type="button" onClick={handleInvite} disabled={!cohortId || pending}>
+          {pending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Users className="w-4 h-4" />}
         </Button>
       </div>
-      <p className="text-xs text-muted-foreground">Adds every cohort member's email to this roster, skipping duplicates.</p>
+      <p className="text-xs text-muted-foreground">Enrolls every member of the cohort into this course, skipping anyone already in it.</p>
     </div>
+  );
+}
+
+function EditCourseDialog({
+  courseId, open, onOpenChange, initialTitle, initialDescription,
+}: {
+  courseId: number;
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  initialTitle: string;
+  initialDescription: string;
+}) {
+  const [title, setTitle] = useState(initialTitle);
+  const [description, setDescription] = useState(initialDescription);
+  const [saving, setSaving] = useState(false);
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  // Reset fields whenever the dialog opens (in case the course changed).
+  const handleOpenChange = (v: boolean) => {
+    if (v) { setTitle(initialTitle); setDescription(initialDescription); }
+    onOpenChange(v);
+  };
+
+  const handleSave = async () => {
+    if (!title.trim()) {
+      toast({ title: "Title required", description: "Give the course a name.", variant: "destructive" });
+      return;
+    }
+    setSaving(true);
+    try {
+      const res = await fetch(`/api/courses/${courseId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title: title.trim(), description: description.trim() || null }),
+      });
+      if (!res.ok) {
+        let msg = res.statusText;
+        try { const j = await res.json(); msg = j?.error || msg; } catch { /* ignore */ }
+        throw new Error(msg);
+      }
+      toast({ title: "Course updated" });
+      queryClient.invalidateQueries({ queryKey: getGetCourseQueryKey(courseId) });
+      queryClient.invalidateQueries({ queryKey: getListCoursesQueryKey() });
+      onOpenChange(false);
+    } catch (err: any) {
+      toast({ title: "Couldn't update course", description: err?.message || "Please try again.", variant: "destructive" });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={handleOpenChange}>
+      <DialogContent className="sm:max-w-[480px]">
+        <DialogHeader>
+          <DialogTitle className="font-serif text-2xl">Edit course</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4 pt-2">
+          <div className="space-y-2">
+            <Label htmlFor="edit-course-title">Course name</Label>
+            <Input id="edit-course-title" value={title} onChange={(e) => setTitle(e.target.value)} autoFocus />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="edit-course-desc">Description</Label>
+            <Textarea id="edit-course-desc" rows={3} value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Optional short description shown to students." />
+          </div>
+          <div className="flex justify-end gap-2 pt-2 border-t">
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+            <Button type="button" onClick={handleSave} disabled={saving || !title.trim()}>
+              {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+              Save
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }
