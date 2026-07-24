@@ -1,5 +1,6 @@
 import path from "path";
 import express, { type Express } from "express";
+import helmet from "helmet";
 import cors from "cors";
 import pinoHttp from "pino-http";
 import { clerkMiddleware } from "@clerk/express";
@@ -14,6 +15,16 @@ import { logger } from "./lib/logger";
 import { logActivity } from "./lib/activityLog";
 
 const app: Express = express();
+
+// Security headers (HSTS, X-Content-Type-Options, frameguard, etc.). CSP is
+// left off here: this process serves a JSON API, and the SPA is served by the
+// Vercel CDN (not Express) in production, so a CSP set here would not cover it.
+app.use(
+  helmet({
+    contentSecurityPolicy: false,
+    crossOriginEmbedderPolicy: false,
+  }),
+);
 
 app.use(
   pinoHttp({
