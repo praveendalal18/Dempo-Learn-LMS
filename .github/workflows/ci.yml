@@ -37,6 +37,9 @@ jobs:
     env:
       DATABASE_URL: postgres://test:test@localhost:5432/test
       NODE_ENV: test
+      # admin.test.ts asserts this exact email auto-provisions as admin; the
+      # app reads the designated admins from ADMIN_EMAILS. Not a secret.
+      ADMIN_EMAILS: pravendalal@gmail.com
 
     steps:
       - uses: actions/checkout@v4
