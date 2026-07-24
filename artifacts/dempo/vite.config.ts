@@ -50,6 +50,19 @@ export default defineConfig({
   build: {
     outDir: path.resolve(import.meta.dirname, 'dist/public'),
     emptyOutDir: true,
+    chunkSizeWarningLimit: 900,
+    rollupOptions: {
+      output: {
+        // Split large, rarely-changing vendors into their own chunks so the
+        // browser caches them across deploys and the initial route payload
+        // stays small. Charts/editor only load on the pages that use them.
+        manualChunks: {
+          'react-vendor': ['react', 'react-dom', 'wouter'],
+          charts: ['recharts'],
+          clerk: ['@clerk/react'],
+        },
+      },
+    },
   },
   server: {
     port,

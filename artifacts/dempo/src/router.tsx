@@ -1,3 +1,4 @@
+import { lazy, Suspense } from "react";
 import { Switch, Route, Redirect } from "wouter";
 import { useAuth, SignOutButton } from "@clerk/react";
 import { useGetMe, getGetMeQueryKey } from "@workspace/api-client-react";
@@ -23,29 +24,35 @@ function NotInvited() {
   );
 }
 
-// Pages to import
-import { LandingPage, SignInPage, SignUpPage, RolePickerPage } from "@/pages/auth";
-import DashboardPage from "@/pages/dashboard";
-import CoursesPage from "@/pages/courses";
-import CohortsPage from "@/pages/cohorts";
-import JournalPage from "@/pages/journal";
-import CourseViewPage from "@/pages/course-view";
-import AssignmentViewPage from "@/pages/assignment-view";
-import QuizViewPage from "@/pages/quiz-view";
-import SubmissionViewPage from "@/pages/submission-view";
-import MessagesPage from "@/pages/messages";
-import CalendarPage from "@/pages/calendar";
-import SettingsPage from "@/pages/settings";
-import AdminLogsPage from "@/pages/admin-logs";
-import AdminUsersPage from "@/pages/admin-users";
-import AdminInvitesPage from "@/pages/admin-invites";
-import OversightPage from "@/pages/oversight";
-import CoordinatorPage from "@/pages/coordinator";
-import FeedbackPage from "@/pages/feedback";
-import AnalyticsPage from "@/pages/analytics";
-import AnalyticsCoursePage from "@/pages/analytics-course";
-import MyPlanPage from "@/pages/my-plan";
-import { PrivacyPage, TermsPage, CookiesPage } from "@/pages/legal";
+// Pages are code-split: each route loads only its own JS chunk on demand,
+// instead of shipping every page in one ~2 MB bundle up front.
+const LandingPage = lazy(() => import("@/pages/auth").then((m) => ({ default: m.LandingPage })));
+const SignInPage = lazy(() => import("@/pages/auth").then((m) => ({ default: m.SignInPage })));
+const SignUpPage = lazy(() => import("@/pages/auth").then((m) => ({ default: m.SignUpPage })));
+const RolePickerPage = lazy(() => import("@/pages/auth").then((m) => ({ default: m.RolePickerPage })));
+const DashboardPage = lazy(() => import("@/pages/dashboard"));
+const CoursesPage = lazy(() => import("@/pages/courses"));
+const CohortsPage = lazy(() => import("@/pages/cohorts"));
+const JournalPage = lazy(() => import("@/pages/journal"));
+const CourseViewPage = lazy(() => import("@/pages/course-view"));
+const AssignmentViewPage = lazy(() => import("@/pages/assignment-view"));
+const QuizViewPage = lazy(() => import("@/pages/quiz-view"));
+const SubmissionViewPage = lazy(() => import("@/pages/submission-view"));
+const MessagesPage = lazy(() => import("@/pages/messages"));
+const CalendarPage = lazy(() => import("@/pages/calendar"));
+const SettingsPage = lazy(() => import("@/pages/settings"));
+const AdminLogsPage = lazy(() => import("@/pages/admin-logs"));
+const AdminUsersPage = lazy(() => import("@/pages/admin-users"));
+const AdminInvitesPage = lazy(() => import("@/pages/admin-invites"));
+const OversightPage = lazy(() => import("@/pages/oversight"));
+const CoordinatorPage = lazy(() => import("@/pages/coordinator"));
+const FeedbackPage = lazy(() => import("@/pages/feedback"));
+const AnalyticsPage = lazy(() => import("@/pages/analytics"));
+const AnalyticsCoursePage = lazy(() => import("@/pages/analytics-course"));
+const MyPlanPage = lazy(() => import("@/pages/my-plan"));
+const PrivacyPage = lazy(() => import("@/pages/legal").then((m) => ({ default: m.PrivacyPage })));
+const TermsPage = lazy(() => import("@/pages/legal").then((m) => ({ default: m.TermsPage })));
+const CookiesPage = lazy(() => import("@/pages/legal").then((m) => ({ default: m.CookiesPage })));
 
 function ProtectedRoute({ component: Component, ...rest }: any) {
   const { isLoaded, isSignedIn } = useAuth();
@@ -91,9 +98,18 @@ function ProtectedRoute({ component: Component, ...rest }: any) {
   return <Component {...rest} />;
 }
 
+function PageLoader() {
+  return (
+    <div className="min-h-[60vh] flex items-center justify-center">
+      <Loader2 className="w-8 h-8 animate-spin text-primary" />
+    </div>
+  );
+}
+
 export function AppRouter() {
   return (
     <Shell>
+      <Suspense fallback={<PageLoader />}>
       <Switch>
         {/* Public Routes */}
         <Route path="/" component={LandingPage} />
@@ -208,6 +224,7 @@ export function AppRouter() {
           </div>
         </Route>
       </Switch>
+      </Suspense>
     </Shell>
   );
 }

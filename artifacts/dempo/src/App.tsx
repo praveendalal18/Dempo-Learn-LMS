@@ -8,7 +8,19 @@ import { AppRouter } from '@/router';
 import { Analytics } from '@vercel/analytics/react';
 import { ConsentBanner } from '@/components/consent-banner';
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      // Reuse fetched data across navigations instead of refetching on every
+      // mount / window focus — makes moving between pages feel instant and
+      // cuts redundant API calls (which matter on a cold serverless backend).
+      staleTime: 60_000,
+      gcTime: 5 * 60_000,
+      refetchOnWindowFocus: false,
+      retry: 1,
+    },
+  },
+});
 
 function App() {
   return (
