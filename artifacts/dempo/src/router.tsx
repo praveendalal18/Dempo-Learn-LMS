@@ -45,6 +45,7 @@ import FeedbackPage from "@/pages/feedback";
 import AnalyticsPage from "@/pages/analytics";
 import AnalyticsCoursePage from "@/pages/analytics-course";
 import MyPlanPage from "@/pages/my-plan";
+import { PrivacyPage, TermsPage, CookiesPage } from "@/pages/legal";
 
 function ProtectedRoute({ component: Component, ...rest }: any) {
   const { isLoaded, isSignedIn } = useAuth();
@@ -98,6 +99,9 @@ export function AppRouter() {
         <Route path="/" component={LandingPage} />
         <Route path="/sign-in/*?" component={SignInPage} />
         <Route path="/sign-up/*?" component={SignUpPage} />
+        <Route path="/legal/privacy" component={PrivacyPage} />
+        <Route path="/legal/terms" component={TermsPage} />
+        <Route path="/legal/cookies" component={CookiesPage} />
 
         {/* Auth Required Routes */}
         <Route path="/role-picker">

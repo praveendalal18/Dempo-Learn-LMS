@@ -21,6 +21,11 @@ function AuthShell({ title, subtitle, children }: { title: string; subtitle?: st
       <div className="mt-8 mx-auto w-full max-w-md flex justify-center">
         {children}
       </div>
+      <p className="mt-6 mx-auto w-full max-w-md text-center text-xs text-muted-foreground px-4">
+        By continuing you agree to our{" "}
+        <Link href="/legal/terms" className="text-info hover:underline">Terms</Link>{" "}and{" "}
+        <Link href="/legal/privacy" className="text-info hover:underline">Privacy Policy</Link>.
+      </p>
     </div>
   );
 }
@@ -278,9 +283,13 @@ export function LandingPage() {
         <div className="mx-auto max-w-6xl px-5 md:px-8 py-8 flex flex-col sm:flex-row items-center justify-between gap-3 text-sm text-muted-foreground">
           <div className="flex items-center gap-2">
             <img src={import.meta.env.BASE_URL + "logo.png"} alt="" className="w-5 h-5 rounded" />
-            <span>Dempo Learn</span>
+            <span>© {new Date().getFullYear()} Srinivassa Sinai Dempo College (Autonomous)</span>
           </div>
-          <span>Dempo AI Business School · Goa</span>
+          <nav className="flex items-center gap-4">
+            <Link href="/legal/privacy" className="hover:text-foreground">Privacy</Link>
+            <Link href="/legal/terms" className="hover:text-foreground">Terms</Link>
+            <Link href="/legal/cookies" className="hover:text-foreground">Cookies</Link>
+          </nav>
         </div>
       </footer>
     </div>

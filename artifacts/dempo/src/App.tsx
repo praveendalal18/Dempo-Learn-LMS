@@ -6,6 +6,7 @@ import { ThemeProvider } from 'next-themes';
 import { ClerkAuthProvider } from '@/lib/auth';
 import { AppRouter } from '@/router';
 import { Analytics } from '@vercel/analytics/react';
+import { ConsentBanner } from '@/components/consent-banner';
 
 const queryClient = new QueryClient();
 
@@ -20,6 +21,7 @@ function App() {
           </WouterRouter>
           <Toaster />
           <Analytics />
+          <ConsentBanner />
         </TooltipProvider>
         </ClerkAuthProvider>
       </QueryClientProvider>
