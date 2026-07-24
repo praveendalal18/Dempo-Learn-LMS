@@ -80,6 +80,32 @@ router.post(
       return;
     }
 
+    // Validate user-supplied object paths (same shape the upload flow mints)
+    // so a caller can't point a submission at an arbitrary key or traverse out
+    // of the storage prefix, and cap free-text so a huge payload can't amplify
+    // AI-grading cost or the O(n^2) similarity pass.
+    const VALID_OBJECT_PATH = /^\/objects\/[A-Za-z0-9._-]+(\/[A-Za-z0-9._-]+)*$/;
+    const badPath = (p?: string | null) =>
+      !!p && (!VALID_OBJECT_PATH.test(p) || p.includes(".."));
+    if (
+      (parsed.data.files ?? []).some((f) => badPath(f.path)) ||
+      badPath(parsed.data.videoPath) ||
+      badPath(parsed.data.audioPath)
+    ) {
+      res.status(400).json({ error: "Invalid file path" });
+      return;
+    }
+    if ((parsed.data.textResponse?.length ?? 0) > 100_000) {
+      res
+        .status(400)
+        .json({ error: "Text response is too long (max 100,000 characters)" });
+      return;
+    }
+    if ((parsed.data.linkUrl?.length ?? 0) > 2048) {
+      res.status(400).json({ error: "Link URL is too long" });
+      return;
+    }
+
     const [assignment] = await db
       .select()
       .from(assignmentsTable)

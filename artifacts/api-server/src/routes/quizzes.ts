@@ -472,9 +472,14 @@ router.post(
       .where(eq(quizAttemptsTable.quizId, quiz.id));
     const now = new Date();
     for (const attempt of attempts) {
+      // Finalize with the teacher's manual score, else the deterministic
+      // auto-score for objective questions. The AI suggestion (aiScore) is
+      // NEVER auto-finalized — it can be steered by prompt injection in the
+      // student's answer, so a short answer with no human/auto score stays 0
+      // until a teacher grades it.
       const answers = attempt.answers.map((a) => ({
         ...a,
-        score: a.score ?? a.aiScore ?? a.autoScore ?? 0,
+        score: a.score ?? a.autoScore ?? 0,
       }));
       const total = answers.reduce((sum, a) => sum + (a.score ?? 0), 0);
       await db
@@ -733,7 +738,7 @@ router.patch(
     const answers = attempt.answers.map((a) => {
       const override = overrides.get(a.questionId);
       const score =
-        override != null ? override : a.score ?? a.aiScore ?? a.autoScore ?? 0;
+        override != null ? override : a.score ?? a.autoScore ?? 0;
       return { ...a, score };
     });
     const total = answers.reduce((sum, a) => sum + (a.score ?? 0), 0);

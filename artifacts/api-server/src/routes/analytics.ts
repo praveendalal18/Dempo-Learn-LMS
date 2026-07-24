@@ -19,7 +19,12 @@ import {
   type User,
 } from "@workspace/db";
 import { requireAuth } from "../middlewares/auth";
-import { getCourse, isCourseTeacher } from "../lib/authz";
+import {
+  getCourse,
+  isCourseTeacher,
+  isAssignedCoordinator,
+  getCoordinatorCourseIds,
+} from "../lib/authz";
 import { loadWeightConfig, weightedOverall, type ItemPct } from "../lib/gradebookWeighting";
 
 const router: IRouter = Router();
@@ -32,10 +37,12 @@ function canSeeIdentities(user: User): boolean {
   return user.role === "dean" || user.role === "course_coordinator";
 }
 
-// Analytics scope: dean & coordinator see everything (per product spec);
-// teachers see their own courses; everyone else is denied.
+// Analytics scope: deans see everything (global oversight); coordinators see
+// only the courses assigned to them; teachers see their own courses; everyone
+// else is denied.
 async function scopeCourseIds(user: User): Promise<number[] | "all" | null> {
-  if (user.role === "dean" || user.role === "course_coordinator") return "all";
+  if (user.role === "dean") return "all";
+  if (user.role === "course_coordinator") return getCoordinatorCourseIds(user.id);
   if (user.role === "teacher") {
     const rows = await db.select({ id: coursesTable.id }).from(coursesTable).where(eq(coursesTable.teacherId, user.id));
     return rows.map((r) => r.id);
@@ -43,8 +50,9 @@ async function scopeCourseIds(user: User): Promise<number[] | "all" | null> {
   return null;
 }
 
-function canViewCourseAnalytics(course: Course, user: User): boolean {
-  if (user.role === "dean" || user.role === "course_coordinator") return true;
+async function canViewCourseAnalytics(course: Course, user: User): Promise<boolean> {
+  if (user.role === "dean") return true;
+  if (user.role === "course_coordinator") return isAssignedCoordinator(course.id, user);
   return isCourseTeacher(course, user);
 }
 
@@ -247,7 +255,7 @@ router.get("/analytics/course/:courseId", requireAuth, async (req: Request, res:
   const user = req.localUser!;
   const course = await getCourse(courseId);
   if (!course) { res.status(404).json({ error: "Course not found" }); return; }
-  if (!canViewCourseAnalytics(course, user)) { res.status(403).json({ error: "Forbidden" }); return; }
+  if (!(await canViewCourseAnalytics(course, user))) { res.status(403).json({ error: "Forbidden" }); return; }
   const m = await computeCourseMetrics(course);
   res.json(shapeForViewer(m, canSeeIdentities(user)));
 });
@@ -363,7 +371,7 @@ router.get("/analytics/course/:courseId/export.csv", requireAuth, async (req: Re
   const user = req.localUser!;
   const course = await getCourse(courseId);
   if (!course) { res.status(404).json({ error: "Course not found" }); return; }
-  if (!canViewCourseAnalytics(course, user)) { res.status(403).json({ error: "Forbidden" }); return; }
+  if (!(await canViewCourseAnalytics(course, user))) { res.status(403).json({ error: "Forbidden" }); return; }
 
   const now = new Date();
   const d30 = new Date(now.getTime() - 30 * DAY);

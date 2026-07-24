@@ -1,12 +1,13 @@
 import { Router, type IRouter, type Request, type Response } from "express";
 import { z } from "zod";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import {
   db,
   assignmentsTable,
   submissionsTable,
   assignmentRubricsTable,
   submissionRubricScoresTable,
+  courseGroupMembersTable,
 } from "@workspace/db";
 import { requireAuth } from "../middlewares/auth";
 import { getCourse, isCourseTeacher, canAccessCourse } from "../lib/authz";
@@ -70,7 +71,24 @@ router.get("/submissions/:submissionId/rubric", requireAuth, async (req: Request
   if (!ctx) { res.status(404).json({ error: "Submission not found" }); return; }
   const user = req.localUser!;
   const isOwner = ctx.submission.studentId === user.id;
-  if (!isOwner && !isCourseTeacher(ctx.course, user) && !(await canAccessCourse(ctx.course, user))) {
+  // For a group submission the grade is shared, so any member may see the
+  // rubric marks; otherwise only the owner or the course teacher may. Being
+  // merely enrolled in the course is NOT enough (that would expose one
+  // student's marks to every classmate).
+  let isGroupMember = false;
+  if (!isOwner && ctx.submission.groupId != null) {
+    const [m] = await db
+      .select({ id: courseGroupMembersTable.id })
+      .from(courseGroupMembersTable)
+      .where(
+        and(
+          eq(courseGroupMembersTable.groupId, ctx.submission.groupId),
+          eq(courseGroupMembersTable.studentId, user.id),
+        ),
+      );
+    isGroupMember = !!m;
+  }
+  if (!isOwner && !isGroupMember && !isCourseTeacher(ctx.course, user)) {
     res.status(403).json({ error: "Forbidden" }); return;
   }
   const [rubric] = await db.select().from(assignmentRubricsTable).where(eq(assignmentRubricsTable.assignmentId, ctx.assignment.id));

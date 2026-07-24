@@ -86,7 +86,8 @@ router.get(
     const user = req.localUser!;
     const roster = await groupRoster(ctx.submission.groupId);
     const isMember = roster.some((m) => m.studentId === user.id);
-    if (!isMember && !isCourseTeacher(ctx.course, user)) {
+    const isTeacher = isCourseTeacher(ctx.course, user);
+    if (!isMember && !isTeacher) {
       res.status(403).json({ error: "Forbidden" });
       return;
     }
@@ -98,7 +99,12 @@ router.get(
     const overrideByStudent = new Map(overrides.map((o) => [o.studentId, o]));
 
     const groupScore = ctx.submission.score;
-    const members = roster.map((m) => {
+    // Teachers see the whole roster; a student sees only their own individual
+    // grade (another member's override is private to them).
+    const visibleRoster = isTeacher
+      ? roster
+      : roster.filter((m) => m.studentId === user.id);
+    const members = visibleRoster.map((m) => {
       const o = overrideByStudent.get(m.studentId);
       const overrideScore = o?.score ?? null;
       return {

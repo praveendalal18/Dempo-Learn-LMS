@@ -1,6 +1,7 @@
 import path from "path";
 import express, { type Express } from "express";
 import helmet from "helmet";
+import rateLimit from "express-rate-limit";
 import cors from "cors";
 import pinoHttp from "pino-http";
 import { clerkMiddleware } from "@clerk/express";
@@ -16,6 +17,10 @@ import { logActivity } from "./lib/activityLog";
 
 const app: Express = express();
 
+// Behind Vercel's proxy: trust one hop so req.ip is the real client (used by
+// the rate limiter and logging), without trusting arbitrary X-Forwarded-For.
+app.set("trust proxy", 1);
+
 // Security headers (HSTS, X-Content-Type-Options, frameguard, etc.). CSP is
 // left off here: this process serves a JSON API, and the SPA is served by the
 // Vercel CDN (not Express) in production, so a CSP set here would not cover it.
@@ -23,8 +28,30 @@ app.use(
   helmet({
     contentSecurityPolicy: false,
     crossOriginEmbedderPolicy: false,
+    hsts: { maxAge: 31536000, includeSubDomains: true },
   }),
 );
+
+// Baseline abuse ceiling on the API. NOTE: on Vercel serverless the default
+// store is per-instance (a determined attacker across many warm instances can
+// exceed this) — adequate for single-college traffic; move to a shared store
+// (Upstash Redis) if this scales to many concurrent instances.
+const apiLimiter = rateLimit({
+  windowMs: 60_000,
+  limit: 240, // ~4 req/sec per client per instance
+  standardHeaders: "draft-7",
+  legacyHeaders: false,
+  message: { error: "Too many requests, please slow down." },
+});
+// Tighter ceiling on the expensive, paid-API / heavy-compute write paths
+// (AI grading + O(n^2) similarity on submissions/quiz attempts).
+const writeLimiter = rateLimit({
+  windowMs: 60_000,
+  limit: 20,
+  standardHeaders: "draft-7",
+  legacyHeaders: false,
+  message: { error: "Too many submissions in a short time, please wait." },
+});
 
 app.use(
   pinoHttp({
@@ -71,8 +98,8 @@ app.use(
           : true,
   }),
 );
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: "512kb" }));
+app.use(express.urlencoded({ extended: true, limit: "512kb" }));
 
 app.use(
   clerkMiddleware((req) => ({
@@ -83,6 +110,11 @@ app.use(
   })),
 );
 
+// Tighter limit on the expensive write paths, then the baseline limit on the
+// rest of the API.
+app.use("/api/assignments/:assignmentId/submissions", writeLimiter);
+app.use("/api/quizzes/:quizId/attempts", writeLimiter);
+app.use("/api", apiLimiter);
 app.use("/api", router);
 
 // Single-origin production: serve the built web app for non-API GET routes so

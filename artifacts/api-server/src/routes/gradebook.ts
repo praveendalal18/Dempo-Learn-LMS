@@ -16,15 +16,17 @@ import {
   type User,
 } from "@workspace/db";
 import { requireAuth } from "../middlewares/auth";
-import { getCourse, isCourseTeacher } from "../lib/authz";
+import { getCourse, isCourseTeacher, isAssignedCoordinator } from "../lib/authz";
 
 const router: IRouter = Router();
 
 const mean = (xs: number[]) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : null);
 const round = (n: number | null) => (n == null ? null : Math.round(n));
 
-function canView(course: Course, user: User): boolean {
-  return user.role === "dean" || user.role === "course_coordinator" || isCourseTeacher(course, user);
+async function canView(course: Course, user: User): Promise<boolean> {
+  if (user.role === "dean") return true;
+  if (user.role === "course_coordinator") return isAssignedCoordinator(course.id, user);
+  return isCourseTeacher(course, user);
 }
 
 // item -> [studentId -> pct]. Loads all graded work as percentages.
@@ -137,7 +139,7 @@ router.get("/courses/:courseId/gradebook/config", requireAuth, async (req: Reque
   if (!Number.isInteger(courseId)) { res.status(400).json({ error: "Invalid course id" }); return; }
   const course = await getCourse(courseId);
   if (!course) { res.status(404).json({ error: "Course not found" }); return; }
-  if (!canView(course, req.localUser!)) { res.status(403).json({ error: "Forbidden" }); return; }
+  if (!(await canView(course, req.localUser!))) { res.status(403).json({ error: "Forbidden" }); return; }
   const { categories, catByItem } = await loadConfig(courseId);
   const { items } = await loadItemPercents(courseId);
   res.json({
@@ -185,7 +187,7 @@ router.get("/courses/:courseId/gradebook", requireAuth, async (req: Request, res
   if (!Number.isInteger(courseId)) { res.status(400).json({ error: "Invalid course id" }); return; }
   const course = await getCourse(courseId);
   if (!course) { res.status(404).json({ error: "Course not found" }); return; }
-  if (!canView(course, req.localUser!)) { res.status(403).json({ error: "Forbidden" }); return; }
+  if (!(await canView(course, req.localUser!))) { res.status(403).json({ error: "Forbidden" }); return; }
 
   const { categories, catByItem } = await loadConfig(courseId);
   const { items, pcts } = await loadItemPercents(courseId);
@@ -204,7 +206,7 @@ router.get("/courses/:courseId/gradebook/export.csv", requireAuth, async (req: R
   if (!Number.isInteger(courseId)) { res.status(400).json({ error: "Invalid course id" }); return; }
   const course = await getCourse(courseId);
   if (!course) { res.status(404).json({ error: "Course not found" }); return; }
-  if (!canView(course, req.localUser!)) { res.status(403).json({ error: "Forbidden" }); return; }
+  if (!(await canView(course, req.localUser!))) { res.status(403).json({ error: "Forbidden" }); return; }
 
   const { categories, catByItem } = await loadConfig(courseId);
   const { items, pcts } = await loadItemPercents(courseId);

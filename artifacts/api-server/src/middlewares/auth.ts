@@ -73,10 +73,15 @@ export async function requireAuth(
     let avatarUrl: string | null = null;
     try {
       const clerkUser = await clerkClient.users.getUser(userId);
-      email =
-        clerkUser.primaryEmailAddress?.emailAddress ??
-        clerkUser.emailAddresses[0]?.emailAddress ??
-        "";
+      // Only a VERIFIED email may drive access/role decisions (admin
+      // allow-list, invite match) below. If no address is verified, email
+      // stays "" and provisioning fails closed (403 not_invited) — this is
+      // defense-in-depth so an unverified address can never be used to claim
+      // an admin/teacher/invited identity, regardless of Clerk settings.
+      const verifiedEmail = clerkUser.emailAddresses.find(
+        (e) => e.verification?.status === "verified",
+      )?.emailAddress;
+      email = verifiedEmail ?? "";
       const fullName = [clerkUser.firstName, clerkUser.lastName]
         .filter(Boolean)
         .join(" ")

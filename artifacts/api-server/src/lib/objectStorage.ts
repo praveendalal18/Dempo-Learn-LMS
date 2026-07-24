@@ -163,7 +163,17 @@ export class StoredObject implements AclCapableObject {
     const headers: Record<string, string> = {
       'Content-Type': out.ContentType || 'application/octet-stream',
       'Cache-Control': `${isPublic ? 'public' : 'private'}, max-age=${cacheTtlSec}`,
+      // Never let the browser sniff a different type than declared.
+      'X-Content-Type-Options': 'nosniff',
     };
+    // Private files (submission attachments, course materials) are user-uploaded
+    // with an attacker-controlled Content-Type, so force download rather than
+    // inline rendering — otherwise an uploaded text/html file would execute as
+    // stored XSS in the app origin when a teacher opens it. Public assets
+    // (avatars, logos) stay inline so images render.
+    if (!isPublic) {
+      headers['Content-Disposition'] = 'attachment';
+    }
     if (out.ContentLength != null) {
       headers['Content-Length'] = String(out.ContentLength);
     }

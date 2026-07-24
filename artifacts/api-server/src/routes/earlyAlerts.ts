@@ -11,13 +11,15 @@ import {
   type User,
 } from "@workspace/db";
 import { requireAuth } from "../middlewares/auth";
-import { getCourse, isCourseTeacher } from "../lib/authz";
+import { getCourse, isCourseTeacher, isAssignedCoordinator } from "../lib/authz";
 import { createNotifications } from "../lib/notifications";
 
 const router: IRouter = Router();
 
-function canManage(course: Course, user: User): boolean {
-  return isCourseTeacher(course, user) || user.role === "dean" || user.role === "course_coordinator";
+async function canManage(course: Course, user: User): Promise<boolean> {
+  if (user.role === "dean") return true;
+  if (user.role === "course_coordinator") return isAssignedCoordinator(course.id, user);
+  return isCourseTeacher(course, user);
 }
 
 // POST an early-alert nudge for a student.
@@ -27,7 +29,7 @@ router.post("/courses/:courseId/early-alert", requireAuth, async (req: Request, 
   const course = await getCourse(courseId);
   if (!course) { res.status(404).json({ error: "Course not found" }); return; }
   const sender = req.localUser!;
-  if (!canManage(course, sender)) { res.status(403).json({ error: "Forbidden" }); return; }
+  if (!(await canManage(course, sender))) { res.status(403).json({ error: "Forbidden" }); return; }
   const parsed = z.object({
     studentId: z.string().min(1),
     reason: z.string().trim().min(1).max(200),
@@ -86,7 +88,7 @@ router.get("/courses/:courseId/early-alerts", requireAuth, async (req: Request, 
   if (!Number.isInteger(courseId)) { res.status(400).json({ error: "Invalid course id" }); return; }
   const course = await getCourse(courseId);
   if (!course) { res.status(404).json({ error: "Course not found" }); return; }
-  if (!canManage(course, req.localUser!)) { res.status(403).json({ error: "Forbidden" }); return; }
+  if (!(await canManage(course, req.localUser!))) { res.status(403).json({ error: "Forbidden" }); return; }
 
   const rows = await db
     .select({
