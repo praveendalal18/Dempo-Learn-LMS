@@ -5,6 +5,7 @@ import { Router as WouterRouter } from 'wouter';
 import { ThemeProvider } from 'next-themes';
 import { ClerkAuthProvider } from '@/lib/auth';
 import { AppRouter } from '@/router';
+import { Analytics } from '@vercel/analytics/react';
 
 const queryClient = new QueryClient();
 
@@ -18,6 +19,7 @@ function App() {
             <AppRouter />
           </WouterRouter>
           <Toaster />
+          <Analytics />
         </TooltipProvider>
         </ClerkAuthProvider>
       </QueryClientProvider>
