@@ -13,8 +13,12 @@ Config lives in [`vercel.json`](./vercel.json). You do the dashboard + env steps
 3. **Framework Preset:** Other (already forced via `vercel.json` → `framework: null`).
 4. Build/Install/Output are taken from `vercel.json`:
    - Install: `corepack … pnpm install --no-frozen-lockfile`
-   - Build: `pnpm --filter @workspace/dempo build`
-   - Output: `artifacts/dempo/dist/public`
+   - Build: `pnpm --filter @workspace/dempo build && … cp -r artifacts/dempo/dist/public public`
+   - Output: `public` (the SPA is copied to a root-level `public/`, Vercel's default)
+
+   **Turn OFF the dashboard Override toggles** for Build Command / Output Directory /
+   Install Command so `vercel.json` is the single source of truth (dashboard overrides
+   otherwise win and cause output-dir mismatches).
 5. **Settings → General → Node.js Version → `22.x`** (Vercel's max; the code is Node-24-compatible but doesn't need 24).
 6. **Region:** `vercel.json` pins the function to **Mumbai (`bom1`)** for data residency. (Pro plan required for region pinning.)
 
