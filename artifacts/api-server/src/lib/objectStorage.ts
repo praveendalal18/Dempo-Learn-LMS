@@ -283,9 +283,18 @@ export class ObjectStorageService {
 
     if (url.hostname.startsWith(`${bucket}.`)) {
       // virtual-hosted-style: the path is already the key
-    } else if (key === bucket || key.startsWith(`${bucket}/`)) {
-      // path-style: strip the leading bucket segment
-      key = key.slice(bucket.length).replace(/^\/+/, '');
+    } else {
+      // Path-style. The bucket segment may be at the start (AWS/R2/DO Spaces:
+      // "<bucket>/<key>") or after an endpoint path prefix (Supabase Storage's
+      // S3 API: "/storage/v1/s3/<bucket>/<key>"). Drop everything up to and
+      // including the first "<bucket>/" segment.
+      const marker = `${bucket}/`;
+      const idx = key.indexOf(marker);
+      if (idx !== -1) {
+        key = key.slice(idx + marker.length);
+      } else if (key === bucket) {
+        key = '';
+      }
     }
 
     const prefix = `${this.getPrivatePrefix()}/`;
