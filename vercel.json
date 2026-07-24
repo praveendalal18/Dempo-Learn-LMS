@@ -2,11 +2,11 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": null,
   "installCommand": "corepack enable && corepack prepare pnpm@11.15.1 --activate && pnpm install --no-frozen-lockfile",
-  "buildCommand": "pnpm --filter @workspace/dempo build && pnpm --filter @workspace/dempo exec sh -c 'rm -rf ../../public && cp -r dist/public ../../public'",
+  "buildCommand": "pnpm --filter @workspace/dempo build && pnpm --filter @workspace/dempo exec sh -c 'rm -rf ../../public && cp -r dist/public ../../public' && pnpm --filter @workspace/api-server build",
   "outputDirectory": "public",
   "regions": ["bom1"],
   "functions": {
-    "api/index.ts": {
+    "api/index.js": {
       "maxDuration": 60
     }
   },
