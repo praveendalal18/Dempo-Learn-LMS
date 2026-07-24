@@ -225,6 +225,15 @@ export function requireAdmin(
   next: NextFunction,
 ): void {
   if (!req.localUser?.isAdmin) {
+    // Audit trail: record attempts to reach admin-only endpoints by a
+    // non-admin (probing / privilege-escalation signal).
+    void logActivity({
+      user: req.localUser ?? null,
+      level: "warn",
+      action: "authz.denied",
+      message: `Non-admin attempted admin route ${req.method} ${req.path}`,
+      metadata: { method: req.method, path: req.path },
+    });
     res.status(403).json({ error: "Admin access required" });
     return;
   }

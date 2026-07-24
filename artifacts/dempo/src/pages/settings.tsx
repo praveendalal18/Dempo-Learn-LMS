@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
 import { PageContainer, PageHeader } from "@/components/page";
-import { UserCircle, Loader2 } from "lucide-react";
+import { UserCircle, Loader2, Download } from "lucide-react";
 
 export default function SettingsPage() {
   const { data: user } = useGetMe();
@@ -92,6 +92,29 @@ export default function SettingsPage() {
         </Card>
 
         {isTeacher && <TeacherProfileForm user={user} />}
+
+        <Card className="shadow-sm">
+          <CardHeader>
+            <CardTitle>Privacy &amp; your data</CardTitle>
+            <CardDescription>
+              Download a copy of the personal data we hold about you, or review how we handle it.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <Button asChild variant="outline">
+              <a href="/api/me/export" download>
+                <Download className="w-4 h-4 mr-2" /> Download my data (JSON)
+              </a>
+            </Button>
+            <p className="text-sm text-muted-foreground">
+              See our{" "}
+              <a href="/legal/privacy" className="text-info hover:underline">Privacy Policy</a>,{" "}
+              <a href="/legal/terms" className="text-info hover:underline">Terms</a> and{" "}
+              <a href="/legal/cookies" className="text-info hover:underline">Cookie Notice</a>.
+              To delete your account and data, contact your administrator.
+            </p>
+          </CardContent>
+        </Card>
       </div>
     </PageContainer>
   );
