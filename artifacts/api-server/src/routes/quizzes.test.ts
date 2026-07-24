@@ -361,11 +361,13 @@ describe("quiz lifecycle, visibility and scoring", () => {
     const mc = res.body.questions.find((q: any) => q.id === mcQuestionId);
     expect(mc.correctOption).toBe(1);
 
-    // Bob's un-adjusted attempt fell back to auto/AI scores: 0 (MC) + 3 (AI).
+    // Bob's un-adjusted attempt: MC auto-scores to 0, but the short answer's
+    // AI suggestion is NOT auto-finalized (prompt-injection safety), so it
+    // stays 0 until a teacher grades it → total 0.
     asUser(TEACHER_ID);
     const attempts = await request(app).get(`/api/quizzes/${quizId}/attempts`);
     const bob = attempts.body.find((a: any) => a.studentId === BOB);
-    expect(bob.score).toBe(3);
+    expect(bob.score).toBe(0);
     expect(bob.status).toBe("graded");
   });
 });

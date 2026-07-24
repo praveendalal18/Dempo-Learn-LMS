@@ -151,7 +151,7 @@ describe("invite provisioning on first sign-in", () => {
     actAs(NEWBIE_ID);
     mockGetUser.mockResolvedValue({
       primaryEmailAddress: { emailAddress: INVITE_EMAILS[0] },
-      emailAddresses: [{ emailAddress: INVITE_EMAILS[0] }],
+      emailAddresses: [{ emailAddress: INVITE_EMAILS[0], verification: { status: "verified" } }],
       firstName: "New",
       lastName: "Teacher",
       imageUrl: null,

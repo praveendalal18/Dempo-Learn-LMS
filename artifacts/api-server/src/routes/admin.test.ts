@@ -90,7 +90,7 @@ describe("GET /api/admin/logs access control", () => {
     mockGetAuth.mockReturnValue({ userId: id });
     mockGetUser.mockResolvedValue({
       primaryEmailAddress: { emailAddress: ADMIN_EMAIL },
-      emailAddresses: [{ emailAddress: ADMIN_EMAIL }],
+      emailAddresses: [{ emailAddress: ADMIN_EMAIL, verification: { status: "verified" } }],
       firstName: "Praven",
       lastName: "Dalal",
       username: null,
