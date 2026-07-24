@@ -2,7 +2,7 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": null,
   "installCommand": "corepack enable && corepack prepare pnpm@11.15.1 --activate && pnpm install --no-frozen-lockfile",
-  "buildCommand": "pnpm --filter @workspace/dempo build && rm -rf public && cp -r artifacts/dempo/dist/public public",
+  "buildCommand": "pnpm --filter @workspace/dempo build && pnpm --filter @workspace/dempo exec sh -c 'rm -rf ../../public && cp -r dist/public ../../public'",
   "outputDirectory": "public",
   "regions": ["bom1"],
   "functions": {
