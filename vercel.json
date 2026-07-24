@@ -6,7 +6,7 @@
   "outputDirectory": "public",
   "regions": ["bom1"],
   "functions": {
-    "api/index.js": {
+    "api/index.mjs": {
       "maxDuration": 60
     }
   },
