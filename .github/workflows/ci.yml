@@ -53,20 +53,17 @@ jobs:
       - name: Install dependencies
         run: pnpm install --no-frozen-lockfile
 
-      - name: Build shared db types
-        run: pnpm exec tsc -b --force lib/db/tsconfig.json
+      # Uses the repo's own orchestration: typecheck:libs runs `tsc --build`
+      # over every composite lib (db, api-zod, api-client-react, etc.), then
+      # each app is typechecked. This is what emits the .d.ts the API depends on.
+      - name: Typecheck (libs + apps)
+        run: pnpm run typecheck
 
       - name: Create schema in test database
         run: pnpm --filter @workspace/db run push-force
 
-      - name: Typecheck API
-        run: pnpm --filter @workspace/api-server run typecheck
-
       - name: Test API
         run: pnpm --filter @workspace/api-server run test
-
-      - name: Typecheck web app
-        run: pnpm --filter @workspace/dempo run typecheck
 
       - name: Build web app
         run: pnpm --filter @workspace/dempo run build
