@@ -9,6 +9,7 @@ import {
   quizAttemptsTable,
   usersTable,
   courseGroupMembersTable,
+  submissionMemberGradesTable,
 } from "@workspace/db";
 import {
   GetCourseMyStatsParams,
@@ -29,6 +30,52 @@ import { or } from "drizzle-orm";
 const router: IRouter = Router();
 
 type Sub = typeof submissionsTable.$inferSelect;
+
+/**
+ * Per-member grade overrides for group submissions, keyed
+ * `${submissionId}:${studentId}`. Applied when crediting a group submission to
+ * a member so an individually-adjusted mark flows into their overall score.
+ */
+async function loadMemberOverrides(submissionIds: number[]) {
+  const map = new Map<string, { score: number | null; feedback: string | null }>();
+  if (!submissionIds.length) return map;
+  try {
+    const rows = await db
+      .select()
+      .from(submissionMemberGradesTable)
+      .where(inArray(submissionMemberGradesTable.submissionId, submissionIds));
+    for (const r of rows) {
+      map.set(`${r.submissionId}:${r.studentId}`, {
+        score: r.score,
+        feedback: r.feedback,
+      });
+    }
+  } catch {
+    // Fail open: if the per-member grades table hasn't been migrated yet,
+    // fall back to the shared group score rather than breaking the gradebook.
+  }
+  return map;
+}
+
+/**
+ * The submission a specific member is credited with: for a group submission
+ * with a per-member override, a shallow copy carrying the member's own
+ * score/feedback; otherwise the submission unchanged.
+ */
+function subForMember(
+  s: Sub,
+  memberId: string,
+  overrides: Map<string, { score: number | null; feedback: string | null }>,
+): Sub {
+  if (s.groupId == null) return s;
+  const o = overrides.get(`${s.id}:${memberId}`);
+  if (!o || (o.score == null && o.feedback == null)) return s;
+  return {
+    ...s,
+    score: o.score ?? s.score,
+    feedback: o.feedback ?? s.feedback,
+  };
+}
 type Assignment = typeof assignmentsTable.$inferSelect;
 type QuizRow = typeof quizzesTable.$inferSelect;
 type QuizAttemptRow = typeof quizAttemptsTable.$inferSelect;
@@ -197,7 +244,7 @@ router.get(
     // We search across ALL course assignments (not just currently-targeted ones)
     // so that submissions for group assignments whose group was later deleted
     // still appear — the submitter retains credit even after group removal.
-    const subs = allCourseAssignmentIds.length
+    const rawSubs = allCourseAssignmentIds.length
       ? await db
           .select()
           .from(submissionsTable)
@@ -214,6 +261,11 @@ router.get(
           )
           .orderBy(desc(submissionsTable.submittedAt))
       : [];
+
+    // Apply this student's own per-member override to any group submission so
+    // their overall score and per-submission rows reflect their individual mark.
+    const myOverrides = await loadMemberOverrides(rawSubs.map((s) => s.id));
+    const subs = rawSubs.map((s) => subForMember(s, req.userId!, myOverrides));
 
     const weightCfg = await loadWeightConfig(course.id);
     const stats = computeStats(subs, assignmentById, myQuizAttempts, quizById, weightCfg);
@@ -308,6 +360,7 @@ router.get(
             )
         : [];
 
+    const memberOverrides = await loadMemberOverrides(allSubs.map((s) => s.id));
     const enrolledSet = new Set(studentIds);
     const subsByStudent = new Map<string, Sub[]>();
     const push = (studentId: string, s: Sub) => {
@@ -318,9 +371,10 @@ router.get(
     };
     for (const s of allSubs) {
       if (s.groupId != null) {
-        // Group submissions count for every member of the group.
+        // Group submissions count for every member of the group, each with
+        // their own per-member override applied if the teacher set one.
         for (const memberId of membersByGroup.get(s.groupId) ?? []) {
-          push(memberId, s);
+          push(memberId, subForMember(s, memberId, memberOverrides));
         }
       } else {
         push(s.studentId, s);

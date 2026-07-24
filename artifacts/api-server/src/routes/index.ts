@@ -31,6 +31,7 @@ import discussionsRouter from "./discussions";
 import transcriptRouter from "./transcript";
 import studentPlanRouter from "./studentPlan";
 import studentNotesRouter from "./studentNotes";
+import memberGradesRouter from "./memberGrades";
 
 const router: IRouter = Router();
 
@@ -66,5 +67,6 @@ router.use(discussionsRouter);
 router.use(transcriptRouter);
 router.use(studentPlanRouter);
 router.use(studentNotesRouter);
+router.use(memberGradesRouter);
 
 export default router;

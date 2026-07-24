@@ -61,7 +61,7 @@ export default function SubmissionViewPage({ id }: { id: string }) {
             
             {submission.status === 'graded' && (
               <div className="ml-auto flex flex-col items-end">
-                <span className="text-xs uppercase font-bold tracking-wider text-muted-foreground mb-1">Final Score</span>
+                <span className="text-xs uppercase font-bold tracking-wider text-muted-foreground mb-1">{submission.group ? "Group Score" : "Final Score"}</span>
                 <span className="text-2xl font-bold text-success">{submission.score}<span className="text-sm text-muted-foreground">/{submission.maxScore}</span></span>
               </div>
             )}
@@ -210,7 +210,16 @@ export default function SubmissionViewPage({ id }: { id: string }) {
 
           {/* Teacher Grading Panel */}
           {isTeacher ? (
-            <GradingPanel submission={submission} />
+            <>
+              <GradingPanel submission={submission} />
+              {submission.group && (
+                <MemberGradesEditor
+                  submissionId={submission.id}
+                  maxScore={submission.maxScore}
+                  members={submission.group.members}
+                />
+              )}
+            </>
           ) : (
             <Card className="shadow-sm">
               <CardHeader>
@@ -219,7 +228,18 @@ export default function SubmissionViewPage({ id }: { id: string }) {
               <CardContent>
                 {submission.status === 'graded' ? (
                   <div className="space-y-4">
+                    {submission.group && (
+                      <MyGroupGrade
+                        submissionId={submission.id}
+                        maxScore={submission.maxScore}
+                        groupScore={submission.score}
+                        viewerId={user?.id}
+                      />
+                    )}
                     <div className="p-4 bg-muted/30 rounded-lg border">
+                      <div className="text-xs uppercase font-semibold tracking-wider text-muted-foreground mb-1.5">
+                        {submission.group ? "Feedback to the group" : "Feedback"}
+                      </div>
                       <div className="text-sm leading-relaxed whitespace-pre-wrap">{submission.feedback || "No feedback provided."}</div>
                     </div>
                   </div>
@@ -234,6 +254,181 @@ export default function SubmissionViewPage({ id }: { id: string }) {
           )}
         </div>
       </div>
+    </div>
+  );
+}
+
+type MemberLite = {
+  id: string;
+  name?: string | null;
+  email?: string | null;
+  avatarUrl?: string | null;
+  isLeader: boolean;
+};
+
+/**
+ * Teacher-only editor for per-member grade overrides on a group submission.
+ * The group's shared grade is set in GradingPanel above; here the professor can
+ * give individual members a different score and/or note. A blank score means
+ * "use the group score".
+ */
+function MemberGradesEditor({ submissionId, maxScore: maxScoreProp, members }: {
+  submissionId: number;
+  maxScore: number | null | undefined;
+  members: MemberLite[];
+}) {
+  const maxScore = maxScoreProp ?? 100;
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+  const [saving, setSaving] = useState(false);
+  const [rows, setRows] = useState<Record<string, { score: string; feedback: string }>>({});
+  const queryKey = ["submission-member-grades", submissionId];
+
+  const { data, isLoading } = useQuery({
+    queryKey,
+    queryFn: async () => {
+      const res = await fetch("/api" + `/submissions/${submissionId}/member-grades`);
+      if (!res.ok) throw new Error("Failed to load per-member grades");
+      return (await res.json()) as {
+        groupScore: number | null;
+        maxScore: number;
+        members: { studentId: string; overrideScore: number | null; feedback: string | null }[];
+      };
+    },
+  });
+
+  useEffect(() => {
+    if (!data) return;
+    const init: Record<string, { score: string; feedback: string }> = {};
+    for (const m of data.members) {
+      init[m.studentId] = {
+        score: m.overrideScore == null ? "" : String(m.overrideScore),
+        feedback: m.feedback ?? "",
+      };
+    }
+    setRows(init);
+  }, [data]);
+
+  const groupScore = data?.groupScore ?? null;
+
+  const save = async () => {
+    setSaving(true);
+    try {
+      const grades = members.map((m) => {
+        const r = rows[m.id] ?? { score: "", feedback: "" };
+        const s = r.score.trim();
+        return {
+          studentId: m.id,
+          score: s === "" ? null : Math.max(0, Math.min(maxScore, Number(s) || 0)),
+          feedback: r.feedback.trim() ? r.feedback.trim() : null,
+        };
+      });
+      const res = await fetch("/api" + `/submissions/${submissionId}/member-grades`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ grades }),
+      });
+      if (!res.ok) throw new Error(((await res.json().catch(() => ({}))) as any)?.error || "Failed to save");
+      toast({ title: "Individual grades saved" });
+      queryClient.invalidateQueries({ queryKey });
+    } catch (err: any) {
+      toast({ title: "Could not save individual grades", description: err?.message, variant: "destructive" });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Card className="shadow-sm">
+      <CardHeader className="pb-3 border-b">
+        <CardTitle className="font-semibold flex items-center gap-2 text-base">
+          <UsersIcon className="w-4 h-4 text-primary" /> Individual grades
+        </CardTitle>
+        <p className="text-xs text-muted-foreground mt-1">
+          Optional. Leave a member's score blank to give them the group score
+          {groupScore != null ? ` (${groupScore}/${maxScore})` : ""}. Use this to reflect uneven contribution.
+        </p>
+      </CardHeader>
+      <CardContent className="pt-4 space-y-3">
+        {isLoading ? (
+          <div className="py-4 text-center"><Loader2 className="w-5 h-5 animate-spin mx-auto text-primary" /></div>
+        ) : (
+          members.map((m) => (
+            <div key={m.id} className="border rounded-lg p-3 bg-muted/20 space-y-2">
+              <div className="flex items-center gap-2">
+                <Avatar className="w-6 h-6 border">
+                  <AvatarImage src={m.avatarUrl || ""} />
+                  <AvatarFallback className="text-[10px] bg-primary/5">{m.name?.charAt(0) || "S"}</AvatarFallback>
+                </Avatar>
+                <span className="text-sm font-medium truncate flex-1">{m.name || m.email || m.id}</span>
+                {m.isLeader && <span className="text-xs text-warning font-medium">Leader</span>}
+                <Input
+                  type="number"
+                  min="0"
+                  max={maxScore}
+                  className="w-24 h-9 text-center font-semibold"
+                  placeholder={groupScore != null ? String(groupScore) : "score"}
+                  value={rows[m.id]?.score ?? ""}
+                  onChange={(e) => setRows((p) => ({ ...p, [m.id]: { score: e.target.value, feedback: p[m.id]?.feedback ?? "" } }))}
+                />
+                <span className="text-xs text-muted-foreground">/ {maxScore}</span>
+              </div>
+              <Textarea
+                className="min-h-[52px] resize-y text-sm"
+                placeholder="Individual note (optional)..."
+                value={rows[m.id]?.feedback ?? ""}
+                onChange={(e) => setRows((p) => ({ ...p, [m.id]: { score: p[m.id]?.score ?? "", feedback: e.target.value } }))}
+              />
+            </div>
+          ))
+        )}
+      </CardContent>
+      <CardFooter className="pb-5 px-5">
+        <Button type="button" onClick={save} disabled={saving || isLoading} className="w-full font-semibold">
+          {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+          Save individual grades
+        </Button>
+      </CardFooter>
+    </Card>
+  );
+}
+
+/** Student view: their individual grade/note if the professor set one. */
+function MyGroupGrade({ submissionId, maxScore: maxScoreProp, groupScore, viewerId }: {
+  submissionId: number;
+  maxScore: number | null | undefined;
+  groupScore: number | null | undefined;
+  viewerId?: string;
+}) {
+  const maxScore = maxScoreProp ?? 100;
+  const { data } = useQuery({
+    queryKey: ["submission-member-grades", submissionId],
+    queryFn: async () => {
+      const res = await fetch("/api" + `/submissions/${submissionId}/member-grades`);
+      if (!res.ok) throw new Error("Failed to load");
+      return (await res.json()) as {
+        members: { studentId: string; overrideScore: number | null; feedback: string | null }[];
+      };
+    },
+  });
+  const mine = data?.members.find((m) => m.studentId === viewerId);
+  const hasOverrideScore = mine && mine.overrideScore != null;
+  const hasIndividualFeedback = mine && !!mine.feedback;
+  if (!hasOverrideScore && !hasIndividualFeedback) return null;
+  return (
+    <div className="p-4 rounded-lg border border-info/30 bg-info/10">
+      <div className="text-xs uppercase font-semibold tracking-wider text-info mb-1.5">Your individual grade</div>
+      {hasOverrideScore && (
+        <div className="text-2xl font-bold text-foreground">
+          {mine!.overrideScore}<span className="text-sm font-normal text-muted-foreground">/{maxScore}</span>
+          {groupScore != null && (
+            <span className="ml-2 text-xs font-normal text-muted-foreground">(group score: {groupScore}/{maxScore})</span>
+          )}
+        </div>
+      )}
+      {hasIndividualFeedback && (
+        <div className="text-sm leading-relaxed whitespace-pre-wrap mt-2">{mine!.feedback}</div>
+      )}
     </div>
   );
 }

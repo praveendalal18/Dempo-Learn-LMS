@@ -6,6 +6,7 @@ import {
   integer,
   jsonb,
   real,
+  uniqueIndex,
 } from "drizzle-orm/pg-core";
 
 export type SubmissionFile = { path: string; name: string };
@@ -58,3 +59,33 @@ export const submissionSimilaritiesTable = pgTable("submission_similarities", {
 
 export type SubmissionSimilarity =
   typeof submissionSimilaritiesTable.$inferSelect;
+
+/**
+ * Per-member grade overrides for a group submission. The group's shared
+ * submission still carries the base score/feedback (submissionsTable); a row
+ * here lets the teacher give an individual member a different mark and/or note
+ * (e.g. to reflect uneven contribution). A null score means "use the group's
+ * shared score" — the row may still carry individual feedback.
+ */
+export const submissionMemberGradesTable = pgTable(
+  "submission_member_grades",
+  {
+    id: serial("id").primaryKey(),
+    submissionId: integer("submission_id").notNull(),
+    studentId: text("student_id").notNull(),
+    score: real("score"), // null = fall back to the group's shared score
+    feedback: text("feedback"),
+    gradedAt: timestamp("graded_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("submission_member_grades_sub_student_unique").on(
+      t.submissionId,
+      t.studentId,
+    ),
+  ],
+);
+
+export type SubmissionMemberGrade =
+  typeof submissionMemberGradesTable.$inferSelect;
