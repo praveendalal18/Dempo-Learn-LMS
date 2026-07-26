@@ -325,7 +325,7 @@ function MaterialDialog({ courseId, existing }: { courseId: number; existing?: C
               <ul className="space-y-2">
                 {links.map((link, i) => (
                   <li key={i} className="flex items-center justify-between gap-2 text-sm border rounded-lg px-3 py-2 bg-muted/20">
-                    <span className="flex items-center gap-2 truncate">
+                    <span className="flex items-center gap-2 min-w-0 flex-1">
                       <LinkIcon className="w-4 h-4 text-muted-foreground shrink-0" />
                       <span className="truncate">{link}</span>
                     </span>
@@ -338,12 +338,13 @@ function MaterialDialog({ courseId, existing }: { courseId: number; existing?: C
             )}
             <div className="flex gap-2">
               <Input
+                className="min-w-0 flex-1"
                 placeholder="https://..."
                 value={linkInput}
                 onChange={(e) => setLinkInput(e.target.value)}
                 onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleAddLink(); } }}
               />
-              <Button type="button" variant="outline" onClick={handleAddLink} disabled={!linkInput.trim()}>Add</Button>
+              <Button type="button" variant="outline" className="shrink-0" onClick={handleAddLink} disabled={!linkInput.trim()}>Add</Button>
             </div>
           </div>
 
@@ -353,9 +354,10 @@ function MaterialDialog({ courseId, existing }: { courseId: number; existing?: C
               <ul className="space-y-2">
                 {attachments.map((file, i) => (
                   <li key={i} className="flex items-center justify-between gap-2 text-sm border rounded-lg px-3 py-2 bg-muted/20">
-                    <span className="flex items-center gap-2 truncate">
-                      <Paperclip className="w-4 h-4 text-muted-foreground shrink-0" /> {file.name}
-                      {formatSize(file.size) && <span className="text-xs text-muted-foreground">({formatSize(file.size)})</span>}
+                    <span className="flex items-center gap-2 min-w-0 flex-1">
+                      <Paperclip className="w-4 h-4 text-muted-foreground shrink-0" />
+                      <span className="truncate">{file.name}</span>
+                      {formatSize(file.size) && <span className="text-xs text-muted-foreground shrink-0">({formatSize(file.size)})</span>}
                     </span>
                     <Button type="button" variant="ghost" size="icon" className="w-7 h-7 text-muted-foreground hover:text-destructive shrink-0" onClick={() => setAttachments((prev) => prev.filter((_, idx) => idx !== i))}>
                       <X className="w-4 h-4" />
