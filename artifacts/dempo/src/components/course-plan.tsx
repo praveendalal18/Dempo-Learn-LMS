@@ -483,7 +483,7 @@ function TeacherPlanEditor({ courseId, plan, extras }: { courseId: number; plan:
     setDirty(true);
   };
 
-  const handleSave = async () => {
+  const handleSave = async (silent = false) => {
     setSaving(true);
     try {
       const items = Array.from(drafts.values())
@@ -526,7 +526,7 @@ function TeacherPlanEditor({ courseId, plan, extras }: { courseId: number; plan:
         body: JSON.stringify({ dayDates: dates, dayTimes: times, startTime, sessionMinutes, hours }),
       });
 
-      toast({ title: "Course plan saved", description: "Students will see the updated plan and dates." });
+      if (!silent) toast({ title: "Course plan saved", description: "Students will see the updated plan and dates." });
       queryClient.invalidateQueries({ queryKey: getGetCoursePlanQueryKey(courseId) });
       queryClient.invalidateQueries({ queryKey: planExtrasKey(courseId) });
       setDirty(false);
@@ -536,6 +536,17 @@ function TeacherPlanEditor({ courseId, plan, extras }: { courseId: number; plan:
       setSaving(false);
     }
   };
+
+  // Debounced autosave: persist edits ~2s after the teacher stops typing, so
+  // work is never lost. Silent (no toast). The manual Save button still works.
+  const autoSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    if (!dirty || saving) return;
+    if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current);
+    autoSaveTimer.current = setTimeout(() => { void handleSave(true); }, 2000);
+    return () => { if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dirty, saving, drafts, dayDates, dayTimes, lockedDays, hourLinks, hourFiles, startTime, sessionMinutes, totalHours]);
 
   // Save just one session in place (session mode). Legacy multi-hour days fall
   // back to the full plan save.
@@ -610,10 +621,15 @@ function TeacherPlanEditor({ courseId, plan, extras }: { courseId: number; plan:
             <div className="flex-1 min-w-[200px] text-sm text-muted-foreground pb-1">
               {totalHours > 0 ? `${filledHours}/${totalHours} ${unitLower === "session" ? "sessions" : "hours"} planned. Give each ${unitLower} a date so it lands on students' calendars. Lock a ${unitLower} to show topics only.` : 'Choose a duration to start planning.'}
             </div>
-            <Button onClick={handleSave} disabled={pending || !dirty} className="ml-auto">
-              {pending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
-              Save Plan
-            </Button>
+            <div className="ml-auto flex items-center gap-3">
+              <span className="text-xs text-muted-foreground whitespace-nowrap">
+                {pending ? "Saving…" : dirty ? "Autosaving…" : "All changes saved"}
+              </span>
+              <Button onClick={() => handleSave()} disabled={pending || !dirty}>
+                {pending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
+                Save Plan
+              </Button>
+            </div>
           </div>
 
           {totalHours > 0 && (
