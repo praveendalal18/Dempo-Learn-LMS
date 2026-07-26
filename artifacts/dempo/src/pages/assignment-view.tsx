@@ -11,6 +11,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, UploadCloud, Link as LinkIcon, FileText, Video, Music, CheckCircle, Clock, Award, ArrowRight, Paperclip, Download, Sparkles, Copy, RefreshCw, Users as UsersIcon, Pencil } from "lucide-react";
 import { EditAssignmentDialog } from "@/components/edit-assignment-dialog";
@@ -306,11 +310,29 @@ function StudentSubmissionForm({ assignment, viewerId }: { assignment: any; view
   const isLeader = isGroup && assignment.myGroup?.leaderId === viewerId;
   const leaderBlocked = isGroup && assignment.leaderOnlySubmit && !isLeader;
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const [confirmOpen, setConfirmOpen] = useState(false);
+
+  // Light validation before we ask the student to confirm — no upload yet.
+  const validate = (): string | null => {
+    if (activeTab === 'text') { if (!textResponse.trim()) return "Your response is empty."; }
+    else if (activeTab === 'link') { if (!linkUrl.trim()) return "The link URL is empty."; }
+    else if (activeTab === 'file') { if (!fileToUpload) return "Please attach a file first."; }
+    else return "Please complete the required fields for this submission type.";
+    if (!aiDeclaration) return "Please declare whether you used AI for this work.";
+    return null;
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
+    const err = validate();
+    if (err) { toast({ title: "Check your submission", description: err, variant: "destructive" }); return; }
+    setConfirmOpen(true);
+  };
+
+  const doSubmit = async () => {
+    setConfirmOpen(false);
     let submissionData: any = {};
-    
+
     try {
       if (activeTab === 'text') {
         if (!textResponse.trim()) throw new Error("Response is empty");
@@ -504,6 +526,30 @@ function StudentSubmissionForm({ assignment, viewerId }: { assignment: any; view
             </div>
           </Tabs>
         </form>
+
+        <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Turn in your work?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Once you submit, this is final — you won't be able to edit it or submit again
+                {isGroup ? " for your group" : ""}. Please make sure everything is complete before you continue.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={submitMutation.isPending || requestUrl.isPending}>
+                Review again
+              </AlertDialogCancel>
+              <AlertDialogAction
+                onClick={doSubmit}
+                disabled={submitMutation.isPending || requestUrl.isPending}
+              >
+                {(submitMutation.isPending || requestUrl.isPending) && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                Confirm &amp; submit
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </CardContent>
     </Card>
   );

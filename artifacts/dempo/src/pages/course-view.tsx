@@ -416,11 +416,59 @@ function QuizCard({ quiz, isTeacher }: { quiz: any, isTeacher: boolean }) {
 function AssignmentCard({ assignment, isTeacher }: { assignment: any, isTeacher: boolean }) {
   const isPastDue = assignment.dueDate && new Date(assignment.dueDate) < new Date();
   const [editOpen, setEditOpen] = useState(false);
-  
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  const handleDelete = async () => {
+    setDeleting(true);
+    try {
+      const res = await fetch(`/api/assignments/${assignment.id}`, { method: "DELETE" });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error((data as any)?.error || "Failed to delete");
+      toast({
+        title: "Assignment deleted",
+        description: `Removed the assignment and ${(data as any).deletedSubmissions ?? 0} submission(s).`,
+      });
+      queryClient.invalidateQueries({ queryKey: getListAssignmentsQueryKey(assignment.courseId) });
+      setDeleteOpen(false);
+    } catch (err: any) {
+      toast({ title: "Could not delete assignment", description: err?.message, variant: "destructive" });
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   return (
     <>
     {isTeacher && (
+      <>
       <EditAssignmentDialog assignment={assignment} open={editOpen} onOpenChange={setEditOpen} />
+      <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete this assignment?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This permanently deletes “{assignment.title}” and everything tied to it —
+              all student submissions, grades, rubric marks, group tasks and feedback.
+              This cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => { e.preventDefault(); handleDelete(); }}
+              disabled={deleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+              Delete assignment
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      </>
     )}
     <Link href={`/assignment/${assignment.id}`}>
       <Card className="hover:border-foreground/30 transition-colors cursor-pointer group flex flex-col sm:flex-row">
@@ -467,6 +515,15 @@ function AssignmentCard({ assignment, isTeacher }: { assignment: any, isTeacher:
                   onClick={(e) => { e.preventDefault(); e.stopPropagation(); setEditOpen(true); }}
                 >
                   <Pencil className="w-4 h-4" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="w-8 h-8 text-muted-foreground hover:text-destructive"
+                  title="Delete assignment"
+                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); setDeleteOpen(true); }}
+                >
+                  <Trash2 className="w-4 h-4" />
                 </Button>
                 <div className="text-center px-4 py-2 bg-muted/50 rounded-lg border">
                   <div className="text-2xl font-bold text-foreground">{assignment.submissionCount || 0}</div>

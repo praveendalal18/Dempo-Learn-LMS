@@ -4,8 +4,14 @@ import {
   db,
   assignmentsTable,
   submissionsTable,
+  submissionSimilaritiesTable,
+  submissionMemberGradesTable,
+  submissionRubricScoresTable,
+  assignmentRubricsTable,
   assignmentTargetsTable,
   assignmentGroupsTable,
+  groupTasksTable,
+  gradeItemCategoriesTable,
   courseGroupsTable,
   courseGroupMembersTable,
   enrollmentsTable,
@@ -36,6 +42,7 @@ import {
 } from "../lib/authz";
 import { serializeGroup } from "./groups";
 import { logActivity } from "../lib/activityLog";
+import { ObjectStorageService } from "../lib/objectStorage";
 import {
   notifyCourseStudents,
   createNotifications,
@@ -694,6 +701,117 @@ router.patch(
           : null,
       }),
     );
+  },
+);
+
+// DELETE an assignment and every record tied to it (teacher only). Removes
+// submissions and their per-member grades / rubric marks / similarity rows,
+// group targeting + task breakdowns, targeting rows, the rubric, and the
+// gradebook category mapping — then best-effort deletes the stored files.
+router.delete(
+  "/assignments/:assignmentId",
+  requireAuth,
+  async (req, res): Promise<void> => {
+    const assignmentId = Number(req.params.assignmentId);
+    if (!Number.isInteger(assignmentId)) {
+      res.status(400).json({ error: "Invalid assignment id" });
+      return;
+    }
+
+    const [existing] = await db
+      .select()
+      .from(assignmentsTable)
+      .where(eq(assignmentsTable.id, assignmentId));
+    if (!existing) {
+      res.status(404).json({ error: "Assignment not found" });
+      return;
+    }
+
+    const course = await getCourse(existing.courseId);
+    if (!course || !isCourseTeacher(course, req.localUser!)) {
+      res
+        .status(403)
+        .json({ error: "Only the course teacher can delete assignments" });
+      return;
+    }
+
+    // Collect submissions (for child cleanup) and every object path to remove.
+    const subs = await db
+      .select()
+      .from(submissionsTable)
+      .where(eq(submissionsTable.assignmentId, assignmentId));
+    const subIds = subs.map((s) => s.id);
+    const objectPaths = [
+      ...(existing.attachments ?? []).map((a) => a.path),
+      ...subs.flatMap((s) => (s.files ?? []).map((f) => f.path)),
+      ...subs.map((s) => s.videoPath),
+      ...subs.map((s) => s.audioPath),
+    ].filter((p): p is string => !!p);
+
+    await db.transaction(async (tx) => {
+      if (subIds.length) {
+        await tx
+          .delete(submissionMemberGradesTable)
+          .where(inArray(submissionMemberGradesTable.submissionId, subIds));
+        await tx
+          .delete(submissionRubricScoresTable)
+          .where(inArray(submissionRubricScoresTable.submissionId, subIds));
+      }
+      await tx
+        .delete(submissionSimilaritiesTable)
+        .where(eq(submissionSimilaritiesTable.assignmentId, assignmentId));
+      await tx
+        .delete(submissionsTable)
+        .where(eq(submissionsTable.assignmentId, assignmentId));
+      await tx
+        .delete(groupTasksTable)
+        .where(eq(groupTasksTable.assignmentId, assignmentId));
+      await tx
+        .delete(assignmentGroupsTable)
+        .where(eq(assignmentGroupsTable.assignmentId, assignmentId));
+      await tx
+        .delete(assignmentTargetsTable)
+        .where(eq(assignmentTargetsTable.assignmentId, assignmentId));
+      await tx
+        .delete(assignmentRubricsTable)
+        .where(eq(assignmentRubricsTable.assignmentId, assignmentId));
+      await tx
+        .delete(gradeItemCategoriesTable)
+        .where(
+          and(
+            eq(gradeItemCategoriesTable.courseId, existing.courseId),
+            eq(gradeItemCategoriesTable.itemType, "assignment"),
+            eq(gradeItemCategoriesTable.itemId, assignmentId),
+          ),
+        );
+      await tx
+        .delete(assignmentsTable)
+        .where(eq(assignmentsTable.id, assignmentId));
+    });
+
+    // Best-effort: remove the now-orphaned uploaded files. Never fail the
+    // delete over storage (may be unconfigured or already gone).
+    const storage = new ObjectStorageService();
+    for (const p of objectPaths) {
+      try {
+        await storage.getObjectEntityFile(p).delete({ ignoreNotFound: true });
+      } catch {
+        /* ignore */
+      }
+    }
+
+    void logActivity({
+      user: req.localUser!,
+      action: "assignment.deleted",
+      message: `${req.localUser!.email} deleted assignment "${existing.title}" and ${subIds.length} submission(s)`,
+      metadata: {
+        assignmentId,
+        courseId: existing.courseId,
+        deletedSubmissions: subIds.length,
+      },
+    });
+
+    res.json({ ok: true, deletedSubmissions: subIds.length });
   },
 );
 
