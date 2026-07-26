@@ -33,6 +33,7 @@ import studentPlanRouter from "./studentPlan";
 import studentNotesRouter from "./studentNotes";
 import memberGradesRouter from "./memberGrades";
 import privacyRouter from "./privacy";
+import planExportRouter from "./planExport";
 
 const router: IRouter = Router();
 
@@ -70,5 +71,6 @@ router.use(studentPlanRouter);
 router.use(studentNotesRouter);
 router.use(memberGradesRouter);
 router.use(privacyRouter);
+router.use(planExportRouter);
 
 export default router;

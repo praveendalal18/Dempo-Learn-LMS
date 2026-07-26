@@ -621,7 +621,17 @@ function TeacherPlanEditor({ courseId, plan, extras }: { courseId: number; plan:
             <div className="flex-1 min-w-[200px] text-sm text-muted-foreground pb-1">
               {totalHours > 0 ? `${filledHours}/${totalHours} ${unitLower === "session" ? "sessions" : "hours"} planned. Give each ${unitLower} a date so it lands on students' calendars. Lock a ${unitLower} to show topics only.` : 'Choose a duration to start planning.'}
             </div>
-            <div className="ml-auto flex items-center gap-3">
+            <div className="ml-auto flex items-center gap-2 flex-wrap justify-end">
+              {totalHours > 0 && (
+                <>
+                  <Button asChild variant="outline" size="sm" title="Download the whole plan as a Word document">
+                    <a href={`/api/courses/${courseId}/plan/export.docx`}><Download className="w-4 h-4 mr-1.5" /> Word</a>
+                  </Button>
+                  <Button asChild variant="outline" size="sm" title="Download the whole plan as a PDF">
+                    <a href={`/api/courses/${courseId}/plan/export.pdf`}><Download className="w-4 h-4 mr-1.5" /> PDF</a>
+                  </Button>
+                </>
+              )}
               <span className="text-xs text-muted-foreground whitespace-nowrap">
                 {pending ? "Saving…" : dirty ? "Autosaving…" : "All changes saved"}
               </span>
