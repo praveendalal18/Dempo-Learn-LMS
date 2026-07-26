@@ -12,12 +12,14 @@ if (!process.env.DATABASE_URL) {
 
 export const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  // In production require verified TLS so a misconfigured URL can't silently
-  // fall back to plaintext. Left off elsewhere so local/CI Postgres (no TLS)
-  // still connects.
+  // In production keep TLS encryption on. We do NOT verify the CA
+  // (rejectUnauthorized: false) because managed poolers — notably Supabase's
+  // Supavisor — present a self-signed certificate in the chain, which strict
+  // verification rejects with SELF_SIGNED_CERT_IN_CHAIN. Traffic is still
+  // encrypted; local/CI Postgres (no TLS) leaves ssl off.
   ssl:
     process.env.NODE_ENV === "production"
-      ? { rejectUnauthorized: true }
+      ? { rejectUnauthorized: false }
       : undefined,
 });
 export const db = drizzle(pool, { schema });
