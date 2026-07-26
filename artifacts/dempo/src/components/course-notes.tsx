@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -113,6 +113,21 @@ export function CourseNotes({ courseId }: { courseId: number }) {
       toast({ title: "Couldn't update", description: e?.message, variant: "destructive" });
     }
   };
+
+  // Autosave the open note edit ~1.5s after typing stops (silent safety net;
+  // the Save button still saves and closes explicitly).
+  useEffect(() => {
+    if (!editing || !editing.body.trim()) return;
+    const id = editing.id;
+    const payload = { title: editing.title?.trim() || null, body: editing.body.trim(), tags: editing.tags };
+    const t = setTimeout(() => {
+      api(`/notes/${id}`, { method: "PATCH", body: JSON.stringify(payload) })
+        .then(() => invalidate())
+        .catch(() => {});
+    }, 1500);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editing?.id, editing?.title, editing?.body, editing?.tags]);
 
   return (
     <div className="space-y-6">

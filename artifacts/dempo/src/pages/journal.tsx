@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -476,6 +476,20 @@ function EntryDialog({
     onSuccess: () => { toast({ title: "Entry deleted" }); onDeleted(); },
     onError: (e: Error) => toast({ title: "Could not delete", description: e.message, variant: "destructive" }),
   });
+
+  // Autosave the entry edit ~1.5s after typing stops (silent safety net; the
+  // Save button still saves and closes explicitly).
+  useEffect(() => {
+    if (!editing || !content.trim()) return;
+    const t = setTimeout(() => {
+      api<Entry>(`/journal/${entry.id}`, {
+        method: "PATCH",
+        body: JSON.stringify({ content: content.trim(), link: link.trim() || null }),
+      }).then((e) => onChanged(e)).catch(() => {});
+    }, 1500);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editing, content, link]);
 
   const dateLabel = new Date(entry.entryDate + "T00:00:00").toLocaleDateString(undefined, {
     weekday: "long", month: "long", day: "numeric",
