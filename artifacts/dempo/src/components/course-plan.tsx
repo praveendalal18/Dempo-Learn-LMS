@@ -313,6 +313,13 @@ function TeacherPlanEditor({ courseId, plan, extras }: { courseId: number; plan:
   const [saving, setSaving] = useState(false);
   const [savingSession, setSavingSession] = useState<number | null>(null);
   const [dirty, setDirty] = useState(false);
+  // Hours whose content changed since the last autosave. Autosave upserts only
+  // these, one session at a time (never a destructive rewrite of the whole plan).
+  const [dirtyHours, setDirtyHours] = useState<Set<number>>(new Set());
+  const markHourDirty = (hour: number) => setDirtyHours(prev => new Set(prev).add(hour));
+  // Structural changes (duration, day visibility/locks) aren't per-session, so
+  // they still need the explicit Save Plan button.
+  const [needsFullSave, setNeedsFullSave] = useState(false);
 
   // Schedule auto-fill inputs
   const [startDate, setStartDate] = useState("");
@@ -343,6 +350,8 @@ function TeacherPlanEditor({ courseId, plan, extras }: { courseId: number; plan:
     setTotalHours(plan.totalHours || 0);
     setLockedDays(plan.lockedDays || []);
     setDirty(false);
+    setDirtyHours(new Set());
+    setNeedsFullSave(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [courseId, plan]);
 
@@ -374,11 +383,13 @@ function TeacherPlanEditor({ courseId, plan, extras }: { courseId: number; plan:
       return next;
     });
     setDirty(true);
+    markHourDirty(hour);
   };
 
   const setLinks = (hour: number, value: string) => {
     setHourLinks(prev => { const n = new Map(prev); n.set(hour, value); return n; });
     setDirty(true);
+    markHourDirty(hour);
   };
 
   const setDayDate = (day: number, value: string) => {
@@ -388,6 +399,7 @@ function TeacherPlanEditor({ courseId, plan, extras }: { courseId: number; plan:
       return next;
     });
     setDirty(true);
+    markHourDirty(day);
   };
 
   const setDayTime = (day: number, value: string) => {
@@ -397,6 +409,7 @@ function TeacherPlanEditor({ courseId, plan, extras }: { courseId: number; plan:
       return next;
     });
     setDirty(true);
+    markHourDirty(day);
   };
 
   const toggleWeekday = (i: number) => {
@@ -405,16 +418,16 @@ function TeacherPlanEditor({ courseId, plan, extras }: { courseId: number; plan:
 
   const toggleDayLock = (day: number) => {
     setLockedDays(prev => prev.includes(day) ? prev.filter(d => d !== day) : [...prev, day]);
-    setDirty(true);
+    setDirty(true); setNeedsFullSave(true);
   };
 
   // Bulk visibility: reveal everything, or everything up to session N.
-  const revealAll = () => { setLockedDays([]); setDirty(true); };
+  const revealAll = () => { setLockedDays([]); setDirty(true); setNeedsFullSave(true); };
   const revealUpTo = (n: number) => {
     const locked: number[] = [];
     for (let d = n + 1; d <= totalDays; d++) locked.push(d);
     setLockedDays(locked);
-    setDirty(true);
+    setDirty(true); setNeedsFullSave(true);
   };
   // Current "visible up to" = the session just before the first locked one.
   const visibleUpTo = lockedDays.length === 0
@@ -440,7 +453,8 @@ function TeacherPlanEditor({ courseId, plan, extras }: { courseId: number; plan:
     }
     setDayDates(out);
     setDirty(true);
-    toast({ title: "Dates filled", description: `Scheduled ${Object.keys(out).length} ${unitLower}s. Review below, then Save.` });
+    Object.keys(out).forEach(d => markHourDirty(Number(d)));
+    toast({ title: "Dates filled", description: `Scheduled ${Object.keys(out).length} ${unitLower}s — autosaving.` });
   };
 
   const handleFiles = async (hour: number, fileList: FileList | null) => {
@@ -467,6 +481,7 @@ function TeacherPlanEditor({ courseId, plan, extras }: { courseId: number; plan:
         return n;
       });
       setDirty(true);
+      markHourDirty(hour);
     } catch (err: any) {
       toast({ title: "Upload failed", description: err?.message || "Storage may not be configured yet.", variant: "destructive" });
     } finally {
@@ -481,6 +496,7 @@ function TeacherPlanEditor({ courseId, plan, extras }: { courseId: number; plan:
       return n;
     });
     setDirty(true);
+    markHourDirty(hour);
   };
 
   const handleSave = async (silent = false) => {
@@ -530,6 +546,8 @@ function TeacherPlanEditor({ courseId, plan, extras }: { courseId: number; plan:
       queryClient.invalidateQueries({ queryKey: getGetCoursePlanQueryKey(courseId) });
       queryClient.invalidateQueries({ queryKey: planExtrasKey(courseId) });
       setDirty(false);
+      setDirtyHours(new Set());
+      setNeedsFullSave(false);
     } catch (err: any) {
       toast({ title: "Couldn't save plan", description: err?.response?.data?.error || err?.message || "Please try again.", variant: "destructive" });
     } finally {
@@ -537,16 +555,47 @@ function TeacherPlanEditor({ courseId, plan, extras }: { courseId: number; plan:
     }
   };
 
-  // Debounced autosave: persist edits ~2s after the teacher stops typing, so
-  // work is never lost. Silent (no toast). The manual Save button still works.
+  // Debounced NON-DESTRUCTIVE autosave (session mode only): ~1.5s after the
+  // teacher stops typing, upsert ONLY the changed sessions via the per-session
+  // endpoint. This can never delete other sessions — unlike a full-plan save —
+  // so partial state can't wipe your work. Duration/date/lock changes still use
+  // the manual Save Plan button.
   const autoSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
-    if (!dirty || saving) return;
+    if (hoursPerDay !== 1 || dirtyHours.size === 0 || saving) return;
     if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current);
-    autoSaveTimer.current = setTimeout(() => { void handleSave(true); }, 2000);
+    autoSaveTimer.current = setTimeout(() => {
+      const hours = [...dirtyHours].filter(h => drafts.get(h)?.title.trim());
+      void (async () => {
+        for (const hour of hours) {
+          const draft = drafts.get(hour);
+          if (!draft) continue;
+          const dayTime = dayTimes[String(hour)];
+          try {
+            await api(`/courses/${courseId}/plan/session/${hour}`, {
+              method: "PUT",
+              body: JSON.stringify({
+                title: draft.title.trim(),
+                description: draft.description.trim() || null,
+                preWork: draft.preWork.trim() || null,
+                caseStudy: draft.caseStudy.trim() || null,
+                postWork: draft.postWork.trim() || null,
+                date: dayDates[String(hour)] || null,
+                time: dayTime && dayTime !== startTime ? dayTime : null,
+                links: (hourLinks.get(hour) || "").split(/\r?\n/).map(s => s.trim()).filter(Boolean),
+                attachments: hourFiles.get(hour) || [],
+              }),
+            });
+            setDirtyHours(prev => { const n = new Set(prev); n.delete(hour); return n; });
+          } catch {
+            /* keep the hour dirty; it will retry on the next change */
+          }
+        }
+      })();
+    }, 1500);
     return () => { if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dirty, saving, drafts, dayDates, dayTimes, lockedDays, hourLinks, hourFiles, startTime, sessionMinutes, totalHours]);
+  }, [dirtyHours, saving, drafts, dayDates, dayTimes, hourLinks, hourFiles, startTime, hoursPerDay, courseId]);
 
   // Save just one session in place (session mode). Legacy multi-hour days fall
   // back to the full plan save.
@@ -603,7 +652,7 @@ function TeacherPlanEditor({ courseId, plan, extras }: { courseId: number; plan:
                 id="total-hours"
                 className="flex h-10 w-44 rounded-md border border-input bg-background px-3 py-2 text-sm"
                 value={totalHours}
-                onChange={e => { setTotalHours(parseInt(e.target.value, 10)); setDirty(true); }}
+                onChange={e => { setTotalHours(parseInt(e.target.value, 10)); setDirty(true); setNeedsFullSave(true); }}
               >
                 <option value={0}>No plan</option>
                 {HOUR_OPTIONS.map(h => <option key={h} value={h}>{isSession ? `${h} session${h === 1 ? "" : "s"} (${h}h)` : `${h} hours (${h / hoursPerDay} days)`}</option>)}
@@ -612,11 +661,11 @@ function TeacherPlanEditor({ courseId, plan, extras }: { courseId: number; plan:
             </div>
             <div className="space-y-2">
               <Label htmlFor="start-time" className="flex items-center gap-1"><Clock className="w-3.5 h-3.5" /> Default start time</Label>
-              <Input id="start-time" type="time" className="w-36" value={startTime} onChange={e => { setStartTime(e.target.value); setDirty(true); }} />
+              <Input id="start-time" type="time" className="w-36" value={startTime} onChange={e => { setStartTime(e.target.value); setDirty(true); setNeedsFullSave(true); }} />
             </div>
             <div className="space-y-2">
               <Label htmlFor="session-mins">Length (min)</Label>
-              <Input id="session-mins" type="number" min={15} max={600} step={15} className="w-24" value={sessionMinutes} onChange={e => { setSessionMinutes(parseInt(e.target.value, 10) || 60); setDirty(true); }} />
+              <Input id="session-mins" type="number" min={15} max={600} step={15} className="w-24" value={sessionMinutes} onChange={e => { setSessionMinutes(parseInt(e.target.value, 10) || 60); setDirty(true); setNeedsFullSave(true); }} />
             </div>
             <div className="flex-1 min-w-[200px] text-sm text-muted-foreground pb-1">
               {totalHours > 0 ? `${filledHours}/${totalHours} ${unitLower === "session" ? "sessions" : "hours"} planned. Give each ${unitLower} a date so it lands on students' calendars. Lock a ${unitLower} to show topics only.` : 'Choose a duration to start planning.'}
@@ -633,9 +682,9 @@ function TeacherPlanEditor({ courseId, plan, extras }: { courseId: number; plan:
                 </>
               )}
               <span className="text-xs text-muted-foreground whitespace-nowrap">
-                {pending ? "Saving…" : dirty ? "Autosaving…" : "All changes saved"}
+                {pending ? "Saving…" : dirtyHours.size > 0 ? "Autosaving…" : needsFullSave ? "Click Save Plan to apply" : "All changes saved"}
               </span>
-              <Button onClick={() => handleSave()} disabled={pending || !dirty}>
+              <Button onClick={() => handleSave()} disabled={pending || (!needsFullSave && dirtyHours.size === 0)}>
                 {pending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
                 Save Plan
               </Button>
